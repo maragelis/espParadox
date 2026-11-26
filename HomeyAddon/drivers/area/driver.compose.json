@@ -18,6 +18,8 @@
       "type": "group",
       "label": { "en": "Arming" },
       "children": [
+        { "id": "homealarm_control", "type": "checkbox", "label": { "en": "Allow control from the Home alarm tile" }, "value": false,
+          "hint": { "en": "Off: the Home alarm tile (and the \"Set home alarm state\" flow card) only show the state - arm and disarm with Alarm mode instead. On: the tile arms / disarms the panel too." } },
         { "id": "partial_mode", "type": "dropdown", "label": { "en": "\"Partially armed\" means" }, "value": "stay",
           "hint": { "en": "Which panel mode Homey's \"partially armed\" uses" },
           "values": [

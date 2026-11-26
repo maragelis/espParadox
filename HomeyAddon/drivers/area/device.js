@@ -21,7 +21,12 @@ class AreaDevice extends BridgeDevice {
     this.lastMode = null;
 
     // Homey's standard alarm control: armed / partially_armed / disarmed.
+    // Can be turned off in the device settings, so only "Alarm mode" controls the panel.
     this.registerCapabilityListener('homealarm_state', async (value) => {
+      if (!this.getSetting('homealarm_control')) {
+        // Throwing makes Homey reject the change; the next status poll shows the real state again.
+        throw new Error('Arming/disarming from the Home alarm tile is turned off - use Alarm mode');
+      }
       if (value === 'armed') return this.setMode('full');
       if (value === 'partially_armed') return this.setMode(this.getSetting('partial_mode') || 'stay');
       return this.setMode('disarmed');
@@ -29,7 +34,27 @@ class AreaDevice extends BridgeDevice {
     // The panel's own modes (picker).
     this.registerCapabilityListener('paradox_area_mode', async (value) => this.setMode(value));
 
+    await this._applyHomealarmControl(Boolean(this.getSetting('homealarm_control')));
     await super.onInit();
+  }
+
+  async onSettings({ newSettings, changedKeys }) {
+    if (changedKeys.includes('homealarm_control')) {
+      await this._applyHomealarmControl(Boolean(newSettings.homealarm_control));
+    }
+  }
+
+  /**
+   * Also mark the Home alarm tile read-only when control is off, so Homey shows it
+   * as a status. Best effort: if this Homey version doesn't allow it, the listener
+   * above still refuses every change.
+   */
+  async _applyHomealarmControl(allowed) {
+    try {
+      await this.setCapabilityOptions('homealarm_state', { setable: allowed });
+    } catch (err) {
+      this.log(`Could not set homealarm_state setable=${allowed}: ${err.message}`);
+    }
   }
 
   /** who: optional name for the timeline ("Set alarm mode ... as ..." flow card). */

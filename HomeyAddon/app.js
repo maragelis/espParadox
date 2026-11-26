@@ -148,8 +148,10 @@ class ParadoxBridgeApp extends Homey.App {
     this.actors.delete(area);
     this.actors.delete('any');
     this.homeyCommands.delete(area);
-    if (entry && entry.who !== VIA_BRIDGE) return entry.who;
+    // Homey's own command wins: with a user-code login the panel reports it as the
+    // bridge's panel user (e.g. "Master 1"), which isn't who did it.
     if (homeySent) return homeySent.who ? `${homeySent.who} (Homey)` : 'Homey';
+    if (entry && entry.who !== VIA_BRIDGE) return entry.who;
     if (entry) return 'the bridge (web page / MQTT)';
     return null;
   }

@@ -25,5 +25,11 @@
   },
   "1.5.0": {
     "en": "Panel battery: 'Panel battery low' on alarm areas, flow triggers 'battery became low' / 'battery is OK again', condition 'battery is OK', timeline entries (bridge firmware 1.8.1+)."
+  },
+  "1.6.0": {
+    "en": "New area setting 'Allow control from the Home alarm tile' (off by default): arm and disarm only with Alarm mode."
+  },
+  "1.6.1": {
+    "en": "Timeline: changes made from Homey show 'by Homey' (or the name from the 'as [who]' card) also when the bridge logs in with a user code."
   }
 }
