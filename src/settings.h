@@ -17,8 +17,8 @@ struct Settings {
   // Paradox serial
   uint8_t rxPin, txPin;
   String pcPassword;  // 4 hex digits, section [911]
-  uint8_t sourceId;
-  uint16_t userId;
+  uint8_t loginMethod;  // 0 = PC password [911] (Winload), 1 = user code (NEware)
+  String userCode;      // keypad user code for login method 1 (4-6 digits)
   bool readLabels;
   // Time
   String ntpServer, tz;

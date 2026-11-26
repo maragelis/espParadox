@@ -284,10 +284,10 @@ static void handleCommand(String line) {
   } else if (c == "config") {
     Serial.printf(
         "wifi ssid '%s'  ap ssid '%s'  hostname '%s'  web user '%s'\n"
-        "uart rx %u tx %u  source id 0x%02X  user id 0x%04X  labels %d\n"
+        "uart rx %u tx %u  login %s  labels %d\n"
         "ntp '%s'  tz '%s'  display %d\n",
         cfg.wifiSsid.c_str(), cfg.apSsid.c_str(), cfg.hostname.c_str(), cfg.webUser.c_str(),
-        cfg.rxPin, cfg.txPin, cfg.sourceId, cfg.userId, cfg.readLabels, cfg.ntpServer.c_str(),
+        cfg.rxPin, cfg.txPin, cfg.loginMethod == 1 ? "user code" : "PC password", cfg.readLabels, cfg.ntpServer.c_str(),
         cfg.tz.c_str(), cfg.displayEnabled);
   } else if (c == "reboot") {
     ESP.restart();

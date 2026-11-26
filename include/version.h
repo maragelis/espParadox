@@ -29,4 +29,9 @@
 //   1.12.0 Change password section (current / new / confirm, no reboot); factory-password warning
 //   1.12.1 Settings page split into tabs (Network, Panel, Zones, MQTT, Security, System)
 //   1.12.2 Settings: one global Save (settings + zones + password), RX/TX pins and Time on System tab
-#define FW_VERSION "1.12.2"
+//   1.13.0 Login method: PC password [911] or user code (NEware-style), comparison table in Settings
+//   1.13.1 User-code login tries both code layouts once; stops retrying after refusals (Connect resumes)
+//   1.13.2 Source ID / user ID removed from settings - derived from the login method
+//   1.13.3 Login refusals show the panel's error code
+//   1.13.4 Login: 0x13 (old session open) -> close it and retry; invalid user code -> other code layout once
+#define FW_VERSION "1.13.4"

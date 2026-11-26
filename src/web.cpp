@@ -108,8 +108,8 @@ void handleGetConfig() {
   d["rxPin"] = cfg.rxPin;
   d["txPin"] = cfg.txPin;
   d["pcPasswordSet"] = cfg.pcPassword.length() > 0;
-  d["sourceId"] = cfg.sourceId;
-  d["userId"] = cfg.userId;
+  d["loginMethod"] = cfg.loginMethod;
+  d["userCodeSet"] = cfg.userCode.length() > 0;
   d["readLabels"] = cfg.readLabels;
   d["ntpServer"] = cfg.ntpServer;
   d["tz"] = cfg.tz;
@@ -191,6 +191,9 @@ void handleSetConfig() {
   secret("webPassword", n.webPassword);
   String pc = arg("pcPassword");
   if (pc.length()) n.pcPassword = pc;
+  n.loginMethod = arg("loginMethod") == "1" ? 1 : 0;
+  String uc = arg("userCode");
+  if (uc.length()) n.userCode = uc;
   n.readLabels = server.arg("readLabels") == "on";
   n.ntpServer = arg("ntpServer");
   n.tz = arg("tz");
@@ -210,16 +213,12 @@ void handleSetConfig() {
   while (n.haPrefix.endsWith("/")) n.haPrefix.remove(n.haPrefix.length() - 1);
   n.otaNetwork = server.arg("otaNetwork") == "on";
 
-  long rx, tx, src, uid, mport;
+  long rx, tx, mport;
   if (!parseNum(arg("rxPin"), 0, 39, rx)) return reply(false, "Invalid RX pin");
   if (!parseNum(arg("txPin"), 0, 39, tx)) return reply(false, "Invalid TX pin");
-  if (!parseNum(arg("sourceId"), 1, 12, src)) return reply(false, "Source ID must be 1-12");
-  if (!parseNum(arg("userId"), 0, 65535, uid)) return reply(false, "User ID must be a whole number from 0 to 65535");
   if (!parseNum(arg("mqttPort"), 1, 65535, mport)) return reply(false, "MQTT port must be 1-65535");
   n.rxPin = rx;
   n.txPin = tx;
-  n.sourceId = src;
-  n.userId = uid;
   n.mqttPort = mport;
   if (const char* err = settingsValidate(n)) return reply(false, err);
 
@@ -411,6 +410,9 @@ void buildStatusJson(String& out) {
   link["state"] = paradox::linkStateName(p.state());
   link["error"] = p.lastError();
   link["stopped"] = p.stopped();
+  link["loginMethod"] = cfg.loginMethod == 1 ? "user code" : "PC password";
+  link["loginUser"] = p.loginUser();
+  link["loginAreas"] = p.loginAreaRights();
   link["lastAction"] = p.lastAction();
   link["framesRx"] = p.framesRx();
   link["framesTx"] = p.framesTx();

@@ -44,12 +44,13 @@
 // as a Winload-style connection (command 0x00 bytes 10-11).
 #define PARADOX_PC_PASSWORD  "0000"
 
-// Source ID sent in byte 33 of every request (protocol doc, table 1).
-// 0x01 = Winload direct.
-#define PARADOX_SOURCE_ID    0x01
+// Login method: 0 = PC password [911] (Winload-style), 1 = user code (NEware-style)
+#define PARADOX_LOGIN_METHOD 0
+#define PARADOX_USER_CODE    ""        // 4-6 digit keypad code, for login method 1
 
-// User ID sent in bytes 34-35 of every request.
-#define PARADOX_USER_ID      0x2093
+// Source ID and user ID (bytes 33-35 of every request) follow the login method:
+// PC password -> 0x01 Winload direct, user 0; user code -> 0x05 NEware direct,
+// user = the number the panel answers for the code.
 
 // Read zone / PGM / partition labels from the panel EEPROM after login.
 // The label addresses are NOT in the protocol document; they come from the

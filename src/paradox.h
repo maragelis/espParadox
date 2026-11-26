@@ -173,6 +173,10 @@ class Panel {
   void disconnect();
   void connect();
   bool stopped() const { return stopped_; }
+  // User-code (NEware) login: the user number and area rights the panel answered
+  // (0 / 0 for a PC password login).
+  uint8_t loginUser() const { return loginUser_; }
+  uint8_t loginAreaRights() const { return loginAreas_; }
 
   // --- State
   LinkState state() const { return state_; }
@@ -258,6 +262,16 @@ class Panel {
   char lastAction_[64] = "";
   bool systemAlarm_ = false;
   bool stopped_ = false;  // disconnected by the user
+  uint8_t loginUser_ = 0, loginAreas_ = 0;
+  // Login refusals in a row. The bridge stops retrying (needs Connect) so it never
+  // keeps hammering the panel with a wrong code / password.
+  uint8_t refusals_ = 0;
+  // A 4-5 digit user code can be packed left-aligned ("1234" -> 12 34 00) or
+  // right-aligned (00 12 34); on "invalid user code" the other layout is tried once.
+  bool codeRightAligned_ = false;
+  bool closedStaleSession_ = false;  // sent 0x70 after a 0x13 refusal
+  void sendClose();
+  uint8_t lastLoginError_ = 0xFF;  // error code of the last refusal (0xFF = none)
   // Watched troubles (AC failure, low battery): the bridge logs its own event when
   // the status bit changes, unless the panel sent its own live event (group 44/45,
   // same sub-group) around the same time - and drops the panel's copy if it logged first.

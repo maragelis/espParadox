@@ -11,9 +11,9 @@ namespace {
 constexpr const char* kNs = "bridge";
 // Every NVS key settingsSave() writes (used to detect a partial set).
 constexpr const char* kKeys[] = {"wifiSsid", "wifiPass", "apSsid",   "apPass",   "hostname", "webUser",  "webPass",
-                                 "rxPin",    "txPin",    "pcPass",   "sourceId", "userId",   "labels",   "ntp",
+                                 "rxPin",    "txPin",    "pcPass",   "labels",   "ntp",
                                  "tz",       "display",  "mqttOn",   "mqttHost", "mqttPort", "mqttUser", "mqttPass",
-                                 "mqttBase", "mqttCtl",  "haDisc",   "haPrefix", "otaNet",   "mqttRetZ", "mqttRetP", "staticIp", "ip",       "subnet",   "gateway",  "dns1",     "dns2"};
+                                 "mqttBase", "mqttCtl",  "haDisc",   "haPrefix", "otaNet",   "mqttRetZ", "mqttRetP", "staticIp", "ip",       "subnet",   "gateway",  "dns1",     "dns2",     "loginMeth", "userCode"};
 // Usable on any ESP32 board. Excluded: 0/1/3 (boot button, USB serial),
 // 6-11 (flash), 12 (strapping: idle-high panel TX would break boot).
 constexpr uint8_t kOutputPins[] = {2, 13, 15, 17, 21, 22, 25, 26, 27, 32, 33};
@@ -62,8 +62,8 @@ void settingsLoad() {
   cfg.rxPin = p.getUChar("rxPin", PARADOX_RX_PIN);
   cfg.txPin = p.getUChar("txPin", PARADOX_TX_PIN);
   cfg.pcPassword = p.getString("pcPass", PARADOX_PC_PASSWORD);
-  cfg.sourceId = p.getUChar("sourceId", PARADOX_SOURCE_ID);
-  cfg.userId = p.getUShort("userId", PARADOX_USER_ID);
+  cfg.loginMethod = p.getUChar("loginMeth", PARADOX_LOGIN_METHOD) == 1 ? 1 : 0;
+  cfg.userCode = p.getString("userCode", PARADOX_USER_CODE);
   cfg.readLabels = p.getBool("labels", PARADOX_READ_LABELS);
   cfg.ntpServer = p.getString("ntp", NTP_SERVER);
   cfg.tz = p.getString("tz", TZ_INFO);
@@ -117,8 +117,10 @@ void settingsSave() {
   p.putUChar("rxPin", cfg.rxPin);
   p.putUChar("txPin", cfg.txPin);
   p.putString("pcPass", cfg.pcPassword);
-  p.putUChar("sourceId", cfg.sourceId);
-  p.putUShort("userId", cfg.userId);
+  p.putUChar("loginMeth", cfg.loginMethod);
+  p.putString("userCode", cfg.userCode);
+  p.remove("sourceId");  // no longer settings (follow the login method)
+  p.remove("userId");
   p.putBool("labels", cfg.readLabels);
   p.putString("ntp", cfg.ntpServer);
   p.putString("tz", cfg.tz);
@@ -209,8 +211,13 @@ const char* settingsValidate(const Settings& n) {
                ? "TX pin is used by the display - pick another or turn the display off"
                : "Invalid TX pin";
   if (n.rxPin == n.txPin) return "RX and TX must be different pins";
-  if (!isHex4(n.pcPassword)) return "PC password must be exactly 4 digits (0-9, A-F)";
-  if (n.sourceId < 1 || n.sourceId > 0x0C) return "Source ID must be 1-12";
+  if (n.loginMethod == 0 && !isHex4(n.pcPassword)) return "PC password must be exactly 4 digits (0-9, A-F)";
+  if (n.loginMethod == 1) {
+    if (n.userCode.length() < 4 || n.userCode.length() > 6) return "User code must be 4 to 6 digits";
+    for (char c : n.userCode)
+      if (c < '0' || c > '9') return "User code: digits only";
+  }
+  if (n.loginMethod > 1) return "Unknown login method";
   if (n.ntpServer.isEmpty() || n.ntpServer.length() > 64) return "NTP server must be 1-64 characters";
   if (n.tz.isEmpty() || n.tz.length() > 64) return "Time zone must be 1-64 characters";
   if (n.mqttEnabled && n.mqttHost.isEmpty()) return "MQTT broker address is required";
@@ -240,8 +247,8 @@ void settingsToJson(JsonObject o) {
   o["rxPin"] = cfg.rxPin;
   o["txPin"] = cfg.txPin;
   o["pcPassword"] = cfg.pcPassword;
-  o["sourceId"] = cfg.sourceId;
-  o["userId"] = cfg.userId;
+  o["loginMethod"] = cfg.loginMethod;
+  o["userCode"] = cfg.userCode;
   o["readLabels"] = cfg.readLabels;
   o["ntpServer"] = cfg.ntpServer;
   o["tz"] = cfg.tz;
@@ -286,8 +293,9 @@ void settingsFromJson(JsonObjectConst o, Settings& s) {
   u8("rxPin", s.rxPin);
   u8("txPin", s.txPin);
   str("pcPassword", s.pcPassword);
-  u8("sourceId", s.sourceId);
-  if (o["userId"].is<long>()) s.userId = (uint16_t)constrain(o["userId"].as<long>(), 0L, 65535L);
+  u8("loginMethod", s.loginMethod);
+  str("userCode", s.userCode);
+  // "sourceId" / "userId" in older backups are ignored (they follow the login method now).
   boolean("readLabels", s.readLabels);
   str("ntpServer", s.ntpServer);
   str("tz", s.tz);

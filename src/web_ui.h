@@ -126,6 +126,8 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
 .tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:11px 12px;font-weight:600;color:var(--mute);white-space:nowrap}
 .tabs button.on{color:var(--fg);border-bottom-color:var(--info)}
 .tabs button:hover{color:var(--fg)}
+.cmp{border-collapse:collapse;width:100%;font-size:13px}.cmp th,.cmp td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}.cmp th{color:var(--mute);font-weight:600}.cmp td:first-child{color:var(--mute);white-space:nowrap}
+.tablewrap{overflow-x:auto}
 .tabs #saveAll{border:1px solid var(--info);border-radius:7px;color:#fff;background:var(--info);padding:7px 16px}
 .zdirty td{background:rgba(37,99,235,.08)}
 #msg:empty{display:none}.ver{font-size:12px;font-weight:500;color:var(--mute)}
@@ -205,6 +207,23 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <div class="hint">The ESP32 pins wired to the panel's serial connector. Panel TX is 5 V: use a voltage divider on the RX pin. The list depends on the Board setting above.</div>
 </fieldset>
 <fieldset data-tab="panel"><legend>Paradox panel</legend>
+ <label>Login method<select name="loginMethod"><option value="0">PC password [911]</option><option value="1">User code</option></select></label>
+ <div class="tablewrap" style="margin:4px 0 10px"><table class="cmp">
+  <thead><tr><th></th><th>PC password [911]</th><th>User code</th></tr></thead>
+  <tbody>
+   <tr><td>Protocol name</td><td>Winload connection (0x00)</td><td>NEware connection (0x55)</td></tr>
+   <tr><td>Sent as</td><td>Source 0x01 Winload direct, user 0</td><td>Source 0x05 NEware direct, the user number the panel answers</td></tr>
+   <tr><td>Needs</td><td>The PC password from section [911]</td><td>A normal user code - the one used to arm / disarm at the keypad</td></tr>
+   <tr><td>Panel ID check</td><td>Must match (the bridge reads it from the panel - automatic)</td><td>None</td></tr>
+   <tr><td>Access</td><td>The whole panel</td><td>Only the areas this user may use</td></tr>
+   <tr><td>Panel log / timeline</td><td>"Arming via WinLoad" (timeline: "the bridge")</td><td>Logged as that user, e.g. "Armed by Maria"</td></tr>
+   <tr><td>Status</td><td>Used by default, works on your panel</td><td>From the protocol document; not yet confirmed on every panel - switch back if the panel refuses it</td></tr>
+  </tbody></table></div>
+ <div id="userCodeBox" hidden>
+  <label>User code<input name="userCode" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{4,6}" autocomplete="off"></label>
+  <div class="hint" id="userCodeHint">4-6 digits, the code you use at the keypad. The bridge then acts as this user. Leave empty to keep the saved code.</div>
+ </div>
+ <div id="pcBox">
  <label>PC password [911]<input name="pcPassword" type="password" maxlength="4" pattern="[0-9A-Fa-f]{4}" autocomplete="off"></label>
  <div class="hint" id="pcHint">4 characters (0-9, A-F) - the same as section [911] in the panel. Factory value: 0000. Leave empty to keep the current value.
   <br><button type="button" id="pcHelpBtn" style="margin-top:6px">How do I find the PC password?</button></div>
@@ -221,15 +240,7 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
   <b>Careful:</b> on an LED keypad, typing digits without pressing [ENTER] first <i>changes</i> the password. If that happens, enter the same new value here.
   If nobody changed it, it is <b>0000</b>.
  </div>
- <label>Source ID<select name="sourceId">
-  <option value="1">0x01 Winload direct</option><option value="2">0x02 Winload via IP module</option>
-  <option value="3">0x03 Winload via GSM</option><option value="4">0x04 Winload via modem</option>
-  <option value="5">0x05 NEware direct</option><option value="6">0x06 NEware via IP module</option>
-  <option value="7">0x07 NEware via GSM</option><option value="8">0x08 NEware via modem</option>
-  <option value="9">0x09 IP module (web page)</option><option value="10">0x0A VDMP3 direct</option>
-  <option value="11">0x0B VDMP3 via GSM</option><option value="12">0x0C Remote</option></select></label>
- <label>User ID<input name="userId" type="number" min="0" max="65535" step="1" inputmode="numeric" placeholder="0"></label>
- <div class="hint">A plain number from 0 to 65535 - no "0x" needed. It is sent with every command as the protocol's <i>User ID</i> (identifies who the bridge acts for). With the default Winload-style login the panel doesn't use it, so <b>0</b> is fine - leave it unless you know your panel needs a specific value.</div>
+ </div>
  <label>Read configuration from panel<input name="readLabels" type="checkbox"></label>
 </fieldset>
 <fieldset data-tab="system"><legend>Time</legend>
@@ -283,8 +294,8 @@ function opts(sel,list,cur){sel.replaceChildren(...list.map(p=>{const o=document
 async function load(){
  const c=await (await fetch('/api/config')).json();
  for(const k of ['wifiSsid','apSsid','hostname','webUser','ntpServer','tz'])f[k].value=c[k];
- f.userId.value=c.userId;
- f.sourceId.value=c.sourceId;f.readLabels.checked=c.readLabels;
+ f.loginMethod.value=String(c.loginMethod);loginBoxes();
+ f.userCode.placeholder=c.userCodeSet?'•••• (saved)':'';f.readLabels.checked=c.readLabels;
  f.ipMode.value=c.staticIp?'static':'dhcp';
  for(const k of ['ip','subnet','gateway','dns1','dns2'])f[k].value=c[k]||'';
  if(!f.subnet.value)f.subnet.value='255.255.255.0';
@@ -306,6 +317,8 @@ async function post(url,body){
  try{const r=await fetch(url,{method:'POST',body});const j=await r.json();show(j.message,!j.ok);
   if(j.ok&&/Reboot/i.test(j.message))setTimeout(()=>location.reload(),12000)}catch(e){show('Request failed',true)}}
 let pinCfg=null,ipCur=null;
+function loginBoxes(){const uc=f.loginMethod.value==='1';document.getElementById('userCodeBox').hidden=!uc;document.getElementById('pcBox').hidden=uc}
+f.loginMethod.onchange=loginBoxes;
 f.ipMode.onchange=()=>{document.getElementById('staticBox').hidden=f.ipMode.value!=='static';
  if(f.ipMode.value==='static'&&!f.ip.value&&ipCur&&ipCur.connected)document.getElementById('ipCurrent').click()};
 document.getElementById('ipCurrent').onclick=()=>{if(!ipCur||!ipCur.connected){show('The bridge is not on your WiFi right now',true);return}

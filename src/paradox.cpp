@@ -72,6 +72,21 @@ void applyLabel(char* dst, const uint8_t* src) {
 
 }  // namespace
 
+// Error code in byte 2 of a 0x7X refusal (names from the PAI project's ErrorMessage).
+const char* loginErrorName(uint8_t code) {
+  switch (code) {
+    case 0x00: return "requested command failed";
+    case 0x01: return "invalid user code";
+    case 0x02: return "area in code lockout";
+    case 0x05: return "panel will disconnect";
+    case 0x10: return "panel not connected";
+    case 0x11: return "panel already connected";
+    case 0x12: return "invalid PC password";
+    case 0x13: return "connection mode not accepted (WinLoad on phone line)";
+  }
+  return "unknown error";
+}
+
 const char* linkStateName(LinkState s) {
   switch (s) {
     case LinkState::Disconnected: return "disconnected";
@@ -150,9 +165,14 @@ const Event& Panel::event(int i) const {
 }
 
 void Panel::prepare(uint8_t* m) const {
-  m[33] = cfg.sourceId;
-  m[34] = (cfg.userId >> 8) & 0xFF;
-  m[35] = cfg.userId & 0xFF;
+  // Source ID (protocol table 1): the bridge is wired straight to the panel, so
+  // 0x01 Winload direct (PC password login) or 0x05 NEware direct (user code login).
+  m[33] = cfg.loginMethod == 1 ? 0x05 : 0x01;
+  // User ID: unused with a PC password login; with a user code, the user number
+  // the panel answered for that code.
+  uint16_t uid = cfg.loginMethod == 1 ? loginUser_ : 0;
+  m[34] = (uid >> 8) & 0xFF;
+  m[35] = uid & 0xFF;
   m[36] = checksum(m);
 }
 
@@ -236,7 +256,15 @@ void Panel::sendInit() {
   m[8] = info_.panelId[0];
   m[9] = info_.panelId[1];
   encodeBcd(cfg.pcPassword.c_str(), &m[10], 2);
-  m[13] = 0x00;  // source mode: Winload connection
+  if (cfg.loginMethod == 1) {
+    m[13] = 0x55;  // source mode: NEware connection - log in with a user code
+    String code = cfg.userCode;
+    if (codeRightAligned_)
+      while (code.length() < 6) code = "0" + code;
+    encodeBcd(code.c_str(), &m[14], 3);  // bytes 14-16: code digits
+  } else {
+    m[13] = 0x00;  // source mode: Winload connection - log in with the PC password
+  }
   prepare(m);
   state_ = LinkState::Initializing;
   send(m, Pending::Init);
@@ -279,22 +307,29 @@ void Panel::dropLink(const char* why, uint32_t retryMs) {
 
 void Panel::disconnect() {
   if (stopped_) return;
-  if (state_ != LinkState::Disconnected && port_) {
-    uint8_t m[kMsgLen] = {0};
-    m[0] = 0x70;  // close connection
-    m[2] = 0x05;  // validation byte
-    prepare(m);
-    port_->write(m, kMsgLen);  // fire and forget - we stop listening for answers
-    framesTx_++;
-    dump("TX", m);
-  }
+  if (state_ != LinkState::Disconnected) sendClose();  // fire and forget
   stopped_ = true;
   dropLink("Disconnected by user", 0);
+}
+
+// 0x70 close connection (also used to end a stale session the panel still holds).
+void Panel::sendClose() {
+  if (!port_) return;
+  uint8_t m[kMsgLen] = {0};
+  m[0] = 0x70;
+  m[2] = 0x05;  // validation byte
+  prepare(m);
+  port_->write(m, kMsgLen);
+  framesTx_++;
+  dump("TX", m);
 }
 
 void Panel::connect() {
   if (!stopped_) return;
   stopped_ = false;
+  refusals_ = 0;
+  codeRightAligned_ = false;
+  closedStaleSession_ = false;
   strlcpy(lastError_, "Connecting", sizeof lastError_);
   nextAttemptMs_ = millis();
   Serial.println("[paradox] connect requested");
@@ -384,7 +419,31 @@ void Panel::handleFrame(const uint8_t* m) {
     pending_ = Pending::None;
     lastReplyMs_ = millis();
     if (was == Pending::Start || was == Pending::Init) {
-      dropLink("Panel refused login - check PC password [911]", 15000);
+      refusals_++;
+      lastLoginError_ = m[2];
+      char why[96];
+      Serial.printf("[paradox] login refused: error 0x%02X (%s)%s\n", m[2], loginErrorName(m[2]),
+                    cfg.loginMethod == 1 ? "" : "");
+      if (m[2] == 0x13 && !closedStaleSession_) {
+        // The panel still has an earlier session open (e.g. before a reboot / login change):
+        // close it (0x70) and log in again.
+        closedStaleSession_ = true;
+        refusals_--;
+        sendClose();
+        dropLink("Panel had an old session open - closed it, logging in again", 3000);
+      } else if (cfg.loginMethod == 1 && m[2] == 0x01 && !codeRightAligned_ && cfg.userCode.length() < 6) {
+        // "Invalid user code": the document doesn't say how a short code is packed - try the other layout once.
+        codeRightAligned_ = true;
+        dropLink("Panel refused the user code - trying the other code layout", 3000);
+      } else if (cfg.loginMethod == 1 || refusals_ >= 3) {
+        stopped_ = true;  // don't keep retrying a wrong code / password
+        snprintf(why, sizeof why, "Panel refused login: %s (0x%02X) - press Connect panel to retry",
+                 loginErrorName(m[2]), m[2]);
+        dropLink(why, 0);
+      } else {
+        snprintf(why, sizeof why, "Panel refused login: %s (0x%02X)", loginErrorName(m[2]), m[2]);
+        dropLink(why, 15000);
+      }
     } else if (was == Pending::Action || was == Pending::SetTime) {
       snprintf(lastAction_, sizeof lastAction_, "%s: refused", pendingDesc_);
     } else if (was == Pending::Eeprom) {
@@ -419,6 +478,16 @@ void Panel::handleFrame(const uint8_t* m) {
       sendInit();
       break;
     case Pending::Init:
+      // NEware answer: byte 3 = user number for the code, byte 4 = area rights (bit 0 = area 1).
+      loginUser_ = cfg.loginMethod == 1 ? m[3] : 0;
+      loginAreas_ = cfg.loginMethod == 1 ? (m[4] & 0x03) : 0;
+      if (cfg.loginMethod == 1)
+        Serial.printf("[paradox] logged in with user code: user %u, areas 0x%02X\n", loginUser_, loginAreas_);
+      if (cfg.loginMethod == 1)
+        Serial.printf("[paradox] user-code login accepted (%s code layout)\n", codeRightAligned_ ? "right-aligned" : "left-aligned");
+      closedStaleSession_ = false;
+      lastLoginError_ = 0xFF;
+      refusals_ = 0;
       state_ = LinkState::Online;
       lastError_[0] = '\0';
       statusPage_ = 0;
