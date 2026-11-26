@@ -27,4 +27,6 @@
 //   1.10.0 MQTT settings: retain zone states / retain panel status (each on/off)
 //   1.11.0 WiFi IP address: DHCP or static (IP, mask, gateway, DNS) in Settings
 //   1.12.0 Change password section (current / new / confirm, no reboot); factory-password warning
-#define FW_VERSION "1.12.0"
+//   1.12.1 Settings page split into tabs (Network, Panel, Zones, MQTT, Security, System)
+//   1.12.2 Settings: one global Save (settings + zones + password), RX/TX pins and Time on System tab
+#define FW_VERSION "1.12.2"

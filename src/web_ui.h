@@ -120,11 +120,29 @@ input[type=checkbox]{width:auto;justify-self:start}
 button{font:inherit;padding:7px 12px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
 button.primary{background:var(--info);border-color:var(--info);color:#fff}button.danger{border-color:var(--bad);color:var(--bad)}
 .actions{display:flex;flex-wrap:wrap;gap:8px}#msg{min-height:1.4em;font-weight:600}
-#msg.err{color:var(--bad)}.ver{font-size:12px;font-weight:500;color:var(--mute)}
+#msg.err{color:var(--bad)}
+[hidden]{display:none!important}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:11px 12px;font-weight:600;color:var(--mute);white-space:nowrap}
+.tabs button.on{color:var(--fg);border-bottom-color:var(--info)}
+.tabs button:hover{color:var(--fg)}
+.tabs #saveAll{border:1px solid var(--info);border-radius:7px;color:#fff;background:var(--info);padding:7px 16px}
+.zdirty td{background:rgba(37,99,235,.08)}
+#msg:empty{display:none}.ver{font-size:12px;font-weight:500;color:var(--mute)}
 </style></head><body>
 <header><h1>Bridge settings <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><a href="/">&larr; Back to panel</a><span style="flex:1"></span><button type="button" class="danger" onclick="if(confirm('Reboot the bridge? Unsaved changes on this page are lost.'))post('/api/reboot')">Reboot</button></header>
-<main><form id="f">
-<fieldset><legend>WiFi network</legend>
+<nav class="tabs" id="tabs">
+ <button type="button" data-go="network">Network</button>
+ <button type="button" data-go="panel">Panel</button>
+ <button type="button" data-go="zones">Zones</button>
+ <button type="button" data-go="mqtt">MQTT</button>
+ <button type="button" data-go="security">Security</button>
+ <button type="button" data-go="system">System</button>
+ <span style="flex:1"></span>
+ <button type="button" class="primary" id="saveAll" style="margin:6px 0;align-self:center">Save</button>
+</nav>
+<main><div id="msg"></div><form id="f">
+<fieldset data-tab="network"><legend>WiFi network</legend>
  <label>Network name (SSID)<div class="row"><input name="wifiSsid" maxlength="32" list="ssids" placeholder="empty = access point only"><button type="button" id="scan">Scan</button></div></label>
  <datalist id="ssids"></datalist>
  <label>Password<input name="wifiPassword" type="password" maxlength="63" autocomplete="new-password"></label>
@@ -143,16 +161,16 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>Hostname<input name="hostname" maxlength="32" pattern="[A-Za-z0-9-]+" required></label>
  <div class="hint">Reach the bridge at http://&lt;hostname&gt;.local</div>
 </fieldset>
-<fieldset><legend>Fallback access point</legend>
+<fieldset data-tab="network"><legend>Fallback access point</legend>
  <label>AP name<input name="apSsid" maxlength="32" required></label>
  <label>AP password<input name="apPassword" type="password" minlength="8" maxlength="63" autocomplete="new-password"></label>
  <div class="hint">Starts when there's no WiFi network or it can't be joined for 30 s. Leave the password empty to keep it.</div>
 </fieldset>
-<fieldset><legend>Web login</legend>
+<fieldset data-tab="security"><legend>Web login</legend>
  <label>User<input name="webUser" maxlength="32" required></label>
  <div class="hint">The password is changed in the <b>Change password</b> section below.</div>
 </fieldset>
-<fieldset><legend>MQTT (Homebridge, Homey, ...)</legend>
+<fieldset data-tab="mqtt"><legend>MQTT (Homebridge, Homey, Home Assistant)</legend>
  <label>Enable MQTT<input name="mqttEnabled" type="checkbox"></label>
  <div class="hint" id="mqttState"></div>
  <label>Broker address<input name="mqttHost" maxlength="64" placeholder="e.g. 192.168.1.10"></label>
@@ -171,20 +189,22 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>Home Assistant discovery<input name="haDiscovery" type="checkbox"></label>
  <label>Discovery prefix<input name="haPrefix" maxlength="32" required pattern="[^+#]+"></label>
  <div class="actions" style="margin:6px 0"><button type="button" id="haPub">Publish Home Assistant discovery now</button></div>
- <div class="hint">Home Assistant creates a "Paradox alarm" device: an alarm panel per area and a motion / contact sensor per enabled zone (sensor type is set per zone below).</div>
+ <div class="hint">Home Assistant creates a "Paradox alarm" device: an alarm panel per area and a motion / contact sensor per enabled zone (sensor type is set per zone on the <b>Zones</b> tab).</div>
 </fieldset>
-<fieldset><legend>Network firmware upload</legend>
+<fieldset data-tab="system"><legend>Network firmware upload</legend>
  <label>Allow PlatformIO OTA<input name="otaNetwork" type="checkbox"></label>
  <div class="hint">ArduinoOTA on port 3232, password = web password. Uploads from the Firmware section below always work.</div>
 </fieldset>
-<fieldset><legend>Board</legend>
+<fieldset data-tab="system"><legend>Board</legend>
  <label>TTGO T-Display screen<input name="displayEnabled" type="checkbox"></label>
  <div class="hint">Untick for other ESP32 boards: the screen is never initialised and its pins (4, 5, 14, 16, 18, 19, 23, 34, 35) become free for the panel UART.</div>
 </fieldset>
-<fieldset><legend>Paradox panel</legend>
+<fieldset data-tab="system"><legend>Panel connection pins</legend>
  <label>RX pin (from panel TX)<select name="rxPin"></select></label>
  <label>TX pin (to panel RX)<select name="txPin"></select></label>
- <div class="hint">Panel TX is 5 V: use a voltage divider on the RX pin.</div>
+ <div class="hint">The ESP32 pins wired to the panel's serial connector. Panel TX is 5 V: use a voltage divider on the RX pin. The list depends on the Board setting above.</div>
+</fieldset>
+<fieldset data-tab="panel"><legend>Paradox panel</legend>
  <label>PC password [911]<input name="pcPassword" type="password" maxlength="4" pattern="[0-9A-Fa-f]{4}" autocomplete="off"></label>
  <div class="hint" id="pcHint">4 characters (0-9, A-F) - the same as section [911] in the panel. Factory value: 0000. Leave empty to keep the current value.
   <br><button type="button" id="pcHelpBtn" style="margin-top:6px">How do I find the PC password?</button></div>
@@ -212,26 +232,26 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <div class="hint">A plain number from 0 to 65535 - no "0x" needed. It is sent with every command as the protocol's <i>User ID</i> (identifies who the bridge acts for). With the default Winload-style login the panel doesn't use it, so <b>0</b> is fine - leave it unless you know your panel needs a specific value.</div>
  <label>Read configuration from panel<input name="readLabels" type="checkbox"></label>
 </fieldset>
-<fieldset><legend>Time</legend>
+<fieldset data-tab="system"><legend>Time</legend>
  <label>NTP server<input name="ntpServer" maxlength="64" required></label>
  <label>Time zone (POSIX TZ)<input name="tz" maxlength="64" required></label>
  <div class="hint">e.g. EET-2EEST,M3.5.0/3,M10.5.0/4 (Greece), CET-1CEST,M3.5.0,M10.5.0/3, GMT0BST,M3.5.0/1,M10.5.0</div>
 </fieldset>
-<div id="msg"></div>
-<div class="actions"><button class="primary" type="submit">Save and reboot</button>
-<button type="button" id="reboot">Reboot</button><button type="button" class="danger" id="reset">Reset to defaults</button></div>
 </form>
-<fieldset id="pwBox"><legend>Change password</legend>
+<fieldset id="pwBox" data-tab="security"><legend>Change password</legend>
  <div class="hint" id="pwDefault" hidden style="color:var(--bad);font-weight:600;margin-bottom:6px">You are still using the factory password - please change it.</div>
  <label>Current password<input id="pwCurrent" type="password" autocomplete="current-password"></label>
  <label>New password<input id="pwNew" type="password" minlength="6" maxlength="64" autocomplete="new-password"></label>
  <label>Confirm new password<input id="pwConfirm" type="password" minlength="6" maxlength="64" autocomplete="new-password"></label>
- <div class="hint">At least 6 characters. Takes effect immediately (no reboot) and is also the password for PlatformIO network uploads.
+ <div class="hint">At least 6 characters. Fill these in and press <b>Save</b>. Takes effect immediately and is also the password for PlatformIO network uploads.
  Update it in apps that log in to the bridge (e.g. the Homey app settings).</div>
- <div class="actions" style="margin-top:6px"><button type="button" class="primary" id="pwSave">Change password</button></div>
  <div id="pwMsg" class="hint"></div>
 </fieldset>
-<fieldset><legend>Backup</legend>
+<fieldset data-tab="system"><legend>Maintenance</legend>
+ <div class="hint" style="margin-bottom:8px">Erase every saved setting (WiFi, passwords, MQTT, zone names...) and reboot with the factory defaults. Download a backup first.</div>
+ <div class="actions"><button type="button" class="danger" id="reset">Reset to defaults</button></div>
+</fieldset>
+<fieldset data-tab="system"><legend>Backup</legend>
  <div class="hint" style="margin-bottom:8px">Download all bridge settings and zone names / modes / sensor types as a file, or restore them from one.
  Settings are kept in flash and survive firmware updates - a backup is for replacing or resetting the board.
  <b>The file contains your passwords</b> (WiFi, web, MQTT, PC password) - keep it private.</div>
@@ -239,17 +259,17 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <input type="file" id="restoreFile" accept=".json,application/json" style="width:auto">
  <button type="button" class="danger" id="restoreBtn">Restore backup</button></div>
 </fieldset>
-<fieldset><legend>Zones</legend>
+<fieldset data-tab="zones"><legend>Zones</legend>
  <div class="hint" style="margin-bottom:8px">Read from the panel and stored on the bridge only - the panel's programming is never changed.
  <b>Auto</b> follows the panel (hidden if the panel has the zone disabled). Leave the name empty to use the panel's label.</div>
  <div id="cfgState" class="hint"></div>
  <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr>
- <th>#</th><th>Panel label</th><th>Panel definition</th><th>Area</th><th>Name on the bridge</th><th>Sensor</th><th>Show</th><th></th></tr></thead>
+ <th>#</th><th>Panel label</th><th>Panel definition</th><th>Area</th><th>Name on the bridge</th><th>Sensor</th><th>Show</th></tr></thead>
  <tbody id="zt"></tbody></table></div>
  <div class="actions" style="margin-top:10px"><button type="button" id="reread">Re-read panel configuration</button>
  <button type="button" class="danger" id="zreset">Reset all zone names / modes</button></div>
 </fieldset>
-<fieldset><legend>Firmware update</legend>
+<fieldset data-tab="system"><legend>Firmware update</legend>
  <div class="hint" style="margin-bottom:8px">Running v)HTML" FW_VERSION R"HTML(. Choose <code>firmware.bin</code> (from <code>.pio/build/ttgo-t-display/</code>) - the bridge installs it and reboots. Settings are kept.</div>
  <div class="actions"><input type="file" id="fw" accept=".bin" style="width:auto"><button type="button" class="primary" id="fwgo">Upload firmware</button></div>
  <progress id="fwp" max="100" value="0" style="width:100%;margin-top:10px" hidden></progress>
@@ -294,18 +314,23 @@ document.getElementById('ipCurrent').onclick=()=>{if(!ipCur||!ipCur.connected){s
 f.displayEnabled.onchange=()=>{if(!pinCfg)return;const k=f.displayEnabled.checked?'display':'generic';
  const rx=+f.rxPin.value,tx=+f.txPin.value;opts(f.rxPin,pinCfg[k].rx,rx);opts(f.txPin,pinCfg[k].tx,tx);
  if(!pinCfg[k].rx.includes(rx)||!pinCfg[k].tx.includes(tx))show('A selected pin is used by the display - check the RX/TX pins',true)};
-f.onsubmit=e=>{e.preventDefault();post('/api/config',new URLSearchParams(new FormData(f)))};
+f.onsubmit=e=>{e.preventDefault();saveAll()};
 document.getElementById('haPub').onclick=async()=>{
  try{const r=await fetch('/api/mqtt/republish',{method:'POST'});const j=await r.json();show(j.message,!j.ok)}catch(e){show('Request failed',true)}};
 fetch('/api/status').then(r=>r.json()).then(s=>{document.getElementById('pwDefault').hidden=!s.defaultPassword}).catch(()=>{});
-document.getElementById('pwSave').onclick=async()=>{
- const m=document.getElementById('pwMsg'),cur=document.getElementById('pwCurrent'),nw=document.getElementById('pwNew'),cf=document.getElementById('pwConfirm');
- if(nw.value.length<6){m.textContent='The new password must be at least 6 characters';m.style.color='var(--bad)';return}
- if(nw.value!==cf.value){m.textContent="The two new passwords don't match";m.style.color='var(--bad)';return}
- try{const r=await fetch('/api/password',{method:'POST',body:new URLSearchParams({current:cur.value,new:nw.value,confirm:cf.value})});
-  const j=await r.json();m.textContent=j.message;m.style.color=j.ok?'':'var(--bad)';
-  if(j.ok){cur.value=nw.value=cf.value='';document.getElementById('pwDefault').hidden=true;setTimeout(()=>location.reload(),2500)}
- }catch(e){m.textContent='Request failed';m.style.color='var(--bad)'}};
+// ---- tabs ----
+const TABS=['network','panel','zones','mqtt','security','system'];
+function showTab(name){
+ if(name==='pwBox')name='security';
+ if(!TABS.includes(name))name='network';
+ document.querySelectorAll('[data-tab]').forEach(el=>{el.hidden=el.dataset.tab!==name});
+ document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===name));
+ if(location.hash!=='#'+name)history.replaceState(null,'','#'+name);
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{showTab(b.dataset.go);window.scrollTo(0,0)});
+showTab(location.hash.slice(1));
+// A field the browser rejects on save may be on a hidden tab: switch to it.
+f.addEventListener('invalid',e=>{const t=e.target.closest('[data-tab]');if(t)showTab(t.dataset.tab)},true);
 document.getElementById('pcHelpBtn').onclick=()=>{const h=document.getElementById('pcHelp');h.hidden=!h.hidden};
 document.getElementById('restoreBtn').onclick=async()=>{
  const file=document.getElementById('restoreFile').files[0];
@@ -313,7 +338,6 @@ document.getElementById('restoreBtn').onclick=async()=>{
  if(!confirm('Restore all settings and zone names from '+file.name+' and reboot the bridge?'))return;
  try{const r=await fetch('/api/config/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:await file.text()});
   const j=await r.json();show(j.message,!j.ok);if(j.ok)setTimeout(()=>location.reload(),12000)}catch(e){show('Restore failed',true)}};
-document.getElementById('reboot').onclick=()=>post('/api/reboot');
 document.getElementById('reset').onclick=()=>{if(confirm('Erase all saved settings and reboot with the built-in defaults?'))post('/api/config/reset')};
 document.getElementById('scan').onclick=async e=>{
  e.target.disabled=true;e.target.textContent='Scanning…';
@@ -321,7 +345,65 @@ document.getElementById('scan').onclick=async e=>{
   document.getElementById('ssids').replaceChildren(...l.sort((a,b)=>b.rssi-a.rssi).map(n=>{const o=document.createElement('option');o.value=n.ssid;o.label=n.rssi+' dBm'+(n.open?' open':'');return o}));
   show(l.length+' networks found - pick one from the name field');}catch(x){show('Scan failed',true)}
  e.target.disabled=false;e.target.textContent='Scan'};
-load().catch(()=>show('Could not load settings',true));
+load().then(()=>{formSnapshot=formState();updateDirty()}).catch(()=>show('Could not load settings',true));
+
+// ---- one Save for the whole page ----
+// Saves, in order: changed zone rows (no reboot), bridge settings (only if changed - reboots),
+// a new password (only if typed). Stops at the first error and opens that tab.
+const zoneEdits=new Map();
+let formSnapshot=null;
+function formState(){return new URLSearchParams(new FormData(f)).toString()}
+const pwEls=()=>['pwCurrent','pwNew','pwConfirm'].map(id=>document.getElementById(id));
+function dirtyParts(){
+ const settings=formSnapshot!==null&&formState()!==formSnapshot;
+ const pw=pwEls().some(e=>e.value);
+ return {settings,zones:zoneEdits.size>0,pw,any:settings||zoneEdits.size>0||pw};
+}
+function updateDirty(){document.getElementById('saveAll').textContent=dirtyParts().any?'Save \u2022':'Save'}
+f.addEventListener('input',updateDirty);f.addEventListener('change',updateDirty);
+pwEls().forEach(e=>e.addEventListener('input',updateDirty));
+window.addEventListener('beforeunload',e=>{if(dirtyParts().any){e.preventDefault();e.returnValue=''}});
+async function api(url,body){const r=await fetch(url,{method:'POST',body});return r.json()}
+async function saveAll(){
+ const d=dirtyParts();
+ if(!d.any){show('Nothing to save - no changes.');return}
+ if(d.settings&&!f.reportValidity())return;
+ const [cur,nw,cf]=pwEls(),m=document.getElementById('pwMsg');
+ if(d.pw){
+  let err='';
+  if(!cur.value)err='Enter the current password';
+  else if(nw.value.length<6)err='The new password must be at least 6 characters';
+  else if(nw.value!==cf.value)err="The two new passwords don't match";
+  if(err){m.textContent=err;m.style.color='var(--bad)';showTab('security');show(err,true);return}
+ }
+ if(d.settings&&!confirm('Save the bridge settings and reboot it? It reconnects in about 10 seconds.'))return;
+ const btn=document.getElementById('saveAll');btn.disabled=true;
+ const done=[];
+ try{
+  for(const [id,z] of zoneEdits){
+   const j=await api('/api/zone',new URLSearchParams({zone:id,...z}));
+   if(!j.ok){showTab('zones');show('Zone '+id+': '+j.message,true);return}
+   zoneEdits.delete(id);
+  }
+  if(d.zones){done.push('zones');loadZones()}
+  let rebooting=false;
+  if(d.settings){
+   const j=await api('/api/config',new URLSearchParams(new FormData(f)));
+   if(!j.ok){show(j.message,true);return}
+   formSnapshot=formState();rebooting=true;done.push('settings');
+  }
+  if(d.pw){
+   const j=await api('/api/password',new URLSearchParams({current:cur.value,new:nw.value,confirm:cf.value}));
+   m.textContent=j.message;m.style.color=j.ok?'':'var(--bad)';
+   if(!j.ok){showTab('security');show(j.message,true);return}
+   cur.value=nw.value=cf.value='';document.getElementById('pwDefault').hidden=true;done.push('password');
+  }
+  show('Saved: '+done.join(', ')+'.'+(rebooting?' The bridge is rebooting - this page reloads in about 12 seconds.':'')+(d.pw?' Log in again with the new password.':''));
+  if(rebooting||d.pw)setTimeout(()=>location.reload(),rebooting?12000:2500);
+ }catch(e){show('Save failed: '+e.message,true)}
+ finally{btn.disabled=false;updateDirty()}
+}
+document.getElementById('saveAll').onclick=saveAll;
 const areaTxt=m=>[1,2].filter(a=>m&(1<<(a-1))).join(' + ');
 function cell(t){const td=document.createElement('td');td.style.cssText='padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap';if(t!==undefined)td.append(t);return td}
 async function loadZones(){
@@ -334,11 +416,14 @@ async function loadZones(){
   for(const [v,t] of [['auto','Auto ('+(z.panelEnabled?'shown':'hidden')+')'],['enabled','Always'],['disabled','Never']]){const o=document.createElement('option');o.value=v;o.textContent=t;if(v===z.mode)o.selected=true;mode.append(o)}
   const sensor=document.createElement('select');
   for(const [v,t] of [['contact','Contact (door/window)'],['motion','Motion']]){const o=document.createElement('option');o.value=v;o.textContent=t;if(v===z.sensor)o.selected=true;sensor.append(o)}
-  const b=document.createElement('button');b.type='button';b.textContent='Save';
-  b.onclick=()=>post('/api/zone',new URLSearchParams({zone:z.id,label:name.value,mode:mode.value,sensor:sensor.value})).then(loadZones);
   const tr=document.createElement('tr');if(!z.enabled)tr.style.opacity=.55;
+  const orig=JSON.stringify([z.customLabel,z.mode,z.sensor]);
+  const track=()=>{const now=[name.value.trim(),mode.value,sensor.value];
+   if(JSON.stringify(now)===orig)zoneEdits.delete(z.id);else zoneEdits.set(z.id,{label:now[0],mode:now[1],sensor:now[2]});
+   tr.classList.toggle('zdirty',zoneEdits.has(z.id));updateDirty()};
+  name.oninput=track;mode.onchange=track;sensor.onchange=track;
   tr.append(cell(String(z.id)),cell(z.panelLabel),cell(z.definitionName+(z.definition!==255?' ('+z.definition+')':'')),
-   cell(areaTxt(z.partitions)+' (raw '+z.partitionRaw+')'),cell(name),cell(sensor),cell(mode),cell(b));return tr}));
+   cell(areaTxt(z.partitions)+' (raw '+z.partitionRaw+')'),cell(name),cell(sensor),cell(mode));return tr}));
 }
 document.getElementById('reread').onclick=()=>post('/api/panel/reread').then(()=>setTimeout(loadZones,5000));
 document.getElementById('zreset').onclick=()=>{if(confirm('Clear all zone names and modes on the bridge?'))post('/api/zones/reset').then(loadZones)};
