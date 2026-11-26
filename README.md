@@ -119,6 +119,25 @@ and zone devices and flow cards, talking to the bridge's HTTP API directly (no b
 "When a message is received on topic `paradox/area/1/state`" as a trigger, and "Publish
 `full` to `paradox/area/1/set`" as an action.
 
+## Static IP
+
+Go to **Settings → WiFi network → IP address**. **Automatic (DHCP)** is the default; **Static**
+lets you enter the IP address, subnet mask, gateway and DNS servers. **Use current values**
+fills them from the address the router gave the bridge. Reserve that address in your router,
+or pick one outside its DHCP range. The fields are checked before saving (valid addresses,
+gateway in the same subnet). If the bridge becomes unreachable after a mistake, hold BOOT for
+5 s to reset the settings, or connect to its `ParadoxBridge` access point.
+
+## Settings, firmware updates and backups
+
+Settings live in the ESP32's flash. On the first boot every value is stored there, and
+firmware updates (USB or OTA) never change them, even if `config.h` changes. To move them to
+another board or keep a copy, use **Settings → Backup**:
+- **Download backup** saves a JSON file with all settings plus zone names, modes and sensor types.
+- **Restore backup** loads it and reboots.
+
+The file contains your passwords, so keep it private.
+
 ## Firmware updates (OTA)
 
 - **From the web page**: Settings → *Firmware update* → choose `.pio/build/ttgo-t-display/firmware.bin`

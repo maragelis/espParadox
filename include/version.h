@@ -22,4 +22,9 @@
 //   1.7.1  Retry config EEPROM reads (lost answers) instead of skipping the block
 //   1.8.0  AC failure: event on change, acFailure in status, MQTT panel/ac_power, HA sensor
 //   1.8.1  Low battery: event on change, batteryLow in status, MQTT panel/battery_low, HA sensor
-#define FW_VERSION "1.8.1"
+//   1.9.0  Settings pinned in flash (firmware updates never change them), backup / restore,
+//          PC password [911] how-to, user ID as plain number
+//   1.10.0 MQTT settings: retain zone states / retain panel status (each on/off)
+//   1.11.0 WiFi IP address: DHCP or static (IP, mask, gateway, DNS) in Settings
+//   1.12.0 Change password section (current / new / confirm, no reboot); factory-password warning
+#define FW_VERSION "1.12.0"

@@ -32,6 +32,7 @@ constexpr int kDiscAc = kDiscTroubles + 1;
 constexpr int kDiscBattery = kDiscAc + 1;
 constexpr int kSlots = kDiscBattery + 1;
 uint32_t lastHash[kSlots];
+bool retainCleared[kSlots];  // old retained message removed (this connection)
 bool zoneWasPublished[paradox::kZones];
 
 uint32_t fnv1a(const char* s) {
@@ -46,12 +47,26 @@ void publish(const String& t, const String& payload, bool retain = true) {
   client.publish(t.c_str(), payload.c_str(), retain);
 }
 
+// Retain setting per topic group: zone states, panel status (link, alarm, troubles,
+// AC, battery, info, areas). Discovery configs are always retained.
+bool slotRetained(int slot) {
+  if (slot >= kDiscBase) return true;
+  if (slot >= kZoneBase) return cfg.mqttRetainZones;
+  return cfg.mqttRetainPanel;
+}
+
 // Publish if the payload for this slot changed since last time.
 void publishSlot(int slot, const String& t, const String& payload) {
   uint32_t h = fnv1a(payload.c_str());
   if (lastHash[slot] == h) return;
   lastHash[slot] = h;
-  publish(t, payload);
+  bool retain = slotRetained(slot);
+  if (!retain && !retainCleared[slot]) {
+    // Retain was switched off: remove the broker's old retained copy once.
+    publish(t, "", true);
+    retainCleared[slot] = true;
+  }
+  publish(t, payload, retain);
 }
 
 const char* areaState(const paradox::Partition& a) { return a.inAlarm() ? "alarm" : a.modeName(); }
@@ -422,6 +437,7 @@ void tryConnect() {
   Serial.printf("[mqtt] connected to %s:%u\n", cfg.mqttHost.c_str(), cfg.mqttPort);
   publish(will, "online");
   memset(lastHash, 0, sizeof lastHash);  // republish everything
+  memset(retainCleared, 0, sizeof retainCleared);
   for (const char* s : {"area/+/set", "zone/+/bypass", "pgm/+/set", "beep"})
     client.subscribe(topic(s).c_str());
   if (cfg.haDiscovery) client.subscribe((cfg.haPrefix + "/status").c_str());

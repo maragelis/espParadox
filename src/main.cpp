@@ -33,6 +33,22 @@ static constexpr uint32_t kApFallbackMs = 30000;
 
 static bool staConfigured() { return cfg.wifiSsid.length() > 0; }
 
+// Static IP (Settings -> WiFi): must be set before WiFi.begin(). DHCP otherwise.
+static void applyStaticIp() {
+  if (!cfg.staticIp) return;
+  IPAddress ip, mask, gw, d1, d2;
+  if (!ip.fromString(cfg.ip) || !mask.fromString(cfg.subnet) || !gw.fromString(cfg.gateway)) {
+    Serial.println("[wifi] static IP settings invalid - using DHCP");
+    return;
+  }
+  if (!d1.fromString(cfg.dns1)) d1 = gw;  // no DNS given: the router usually answers
+  if (!d2.fromString(cfg.dns2)) d2 = IPAddress(0, 0, 0, 0);
+  if (WiFi.config(ip, gw, mask, d1, d2))
+    Serial.printf("[wifi] static IP %s, gateway %s, mask %s\n", cfg.ip.c_str(), cfg.gateway.c_str(), cfg.subnet.c_str());
+  else
+    Serial.println("[wifi] could not set the static IP - using DHCP");
+}
+
 static void startAp() {
   WiFi.mode(staConfigured() ? WIFI_AP_STA : WIFI_AP);
   // An AP password shorter than 8 characters is invalid; fall back to an open AP.
@@ -59,6 +75,7 @@ void netBegin() {
         ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);  // more reliable joins / lower latency
+    applyStaticIp();
     WiFi.setAutoReconnect(true);
     WiFi.begin(cfg.wifiSsid.c_str(), cfg.wifiPassword.c_str());
     Serial.printf("[wifi] joining '%s'\n", cfg.wifiSsid.c_str());
@@ -99,6 +116,7 @@ void netLoop() {
       lastBeginMs = millis();
       Serial.printf("[wifi] retrying '%s'\n", cfg.wifiSsid.c_str());
       WiFi.disconnect(false, false);
+      applyStaticIp();
       WiFi.begin(cfg.wifiSsid.c_str(), cfg.wifiPassword.c_str());
     }
     if (!apActive && millis() - lastStaOkMs > kApFallbackMs) {
@@ -117,6 +135,10 @@ NetInfo netInfo() {
   n.ssid = n.staConnected ? WiFi.SSID() : String();
   n.ip = n.staConnected ? WiFi.localIP().toString() : String();
   n.rssi = n.staConnected ? WiFi.RSSI() : 0;
+  n.gateway = n.staConnected ? WiFi.gatewayIP().toString() : String();
+  n.subnet = n.staConnected ? WiFi.subnetMask().toString() : String();
+  n.dns1 = n.staConnected ? WiFi.dnsIP(0).toString() : String();
+  n.dns2 = n.staConnected ? WiFi.dnsIP(1).toString() : String();
   n.apSsid = cfg.apSsid;
   n.apPassword = cfg.apPassword.length() >= 8 ? cfg.apPassword : String("(open)");
   n.wantedSsid = cfg.wifiSsid;

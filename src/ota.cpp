@@ -39,6 +39,10 @@ void otaBegin() {
   started = true;
 }
 
+void otaSetPassword(const char* password) {
+  if (started) ArduinoOTA.setPassword(password);
+}
+
 void otaLoop() {
   if (started) ArduinoOTA.handle();
 }

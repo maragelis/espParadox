@@ -88,6 +88,22 @@ void handleGetConfig() {
   d["apSsid"] = cfg.apSsid;
   d["apPasswordSet"] = cfg.apPassword.length() > 0;
   d["hostname"] = cfg.hostname;
+  d["staticIp"] = cfg.staticIp;
+  d["ip"] = cfg.ip;
+  d["subnet"] = cfg.subnet;
+  d["gateway"] = cfg.gateway;
+  d["dns1"] = cfg.dns1;
+  d["dns2"] = cfg.dns2;
+  {
+    NetInfo ni = netInfo();  // what the bridge uses right now (for "Use current values")
+    JsonObject cur = d["current"].to<JsonObject>();
+    cur["connected"] = ni.staConnected;
+    cur["ip"] = ni.ip;
+    cur["subnet"] = ni.subnet;
+    cur["gateway"] = ni.gateway;
+    cur["dns1"] = ni.dns1;
+    cur["dns2"] = ni.dns2;
+  }
   d["webUser"] = cfg.webUser;
   d["rxPin"] = cfg.rxPin;
   d["txPin"] = cfg.txPin;
@@ -105,6 +121,8 @@ void handleGetConfig() {
   d["mqttPasswordSet"] = cfg.mqttPassword.length() > 0;
   d["mqttBase"] = cfg.mqttBase;
   d["mqttAllowControl"] = cfg.mqttAllowControl;
+  d["mqttRetainZones"] = cfg.mqttRetainZones;
+  d["mqttRetainPanel"] = cfg.mqttRetainPanel;
   d["haDiscovery"] = cfg.haDiscovery;
   d["haPrefix"] = cfg.haPrefix;
   d["mqttStatus"] = mqttStatus();
@@ -125,26 +143,22 @@ void handleGetConfig() {
   server.send(200, "application/json", s);
 }
 
-bool isHex4(const String& s) {
-  if (s.length() != 4) return false;
-  for (char c : s)
-    if (!isxdigit((unsigned char)c)) return false;
-  return true;
-}
-
-bool isHostname(const String& s) {
-  if (s.isEmpty() || s.length() > 32) return false;
-  for (char c : s)
-    if (!(isalnum((unsigned char)c) || c == '-')) return false;
-  return true;
-}
-
-// Parses "12", "0x0C" etc. Returns false if not a number in [lo, hi].
-bool parseNum(const String& s, long lo, long hi, long& out) {
+// Parses a whole number: decimal ("8339"), or hex with a 0x prefix ("0x2093").
+// Returns false if it isn't a number in [lo, hi].
+bool parseNum(String s, long lo, long hi, long& out) {
+  s.trim();
   if (s.isEmpty()) return false;
+  bool hex = s.startsWith("0x") || s.startsWith("0X");
   char* end = nullptr;
-  out = strtol(s.c_str(), &end, 0);
+  out = strtol(s.c_str() + (hex ? 2 : 0), &end, hex ? 16 : 10);
   return end && *end == '\0' && out >= lo && out <= hi;
+}
+
+void applySettings(const Settings& n, const char* how) {
+  cfg = n;
+  settingsSave();
+  Serial.printf("[settings] %s, rebooting\n", how);
+  restartAtMs = millis() + 1500;
 }
 
 void handleSetConfig() {
@@ -167,6 +181,12 @@ void handleSetConfig() {
   n.apSsid = arg("apSsid");
   secret("apPassword", n.apPassword);
   n.hostname = arg("hostname");
+  n.staticIp = arg("ipMode") == "static";
+  n.ip = arg("ip");
+  n.subnet = arg("subnet");
+  n.gateway = arg("gateway");
+  n.dns1 = arg("dns1");
+  n.dns2 = arg("dns2");
   n.webUser = arg("webUser");
   secret("webPassword", n.webPassword);
   String pc = arg("pcPassword");
@@ -183,56 +203,104 @@ void handleSetConfig() {
   n.mqttBase = arg("mqttBase");
   while (n.mqttBase.endsWith("/")) n.mqttBase.remove(n.mqttBase.length() - 1);
   n.mqttAllowControl = server.arg("mqttAllowControl") == "on";
+  n.mqttRetainZones = server.arg("mqttRetainZones") == "on";
+  n.mqttRetainPanel = server.arg("mqttRetainPanel") == "on";
   n.haDiscovery = server.arg("haDiscovery") == "on";
   n.haPrefix = arg("haPrefix");
   while (n.haPrefix.endsWith("/")) n.haPrefix.remove(n.haPrefix.length() - 1);
   n.otaNetwork = server.arg("otaNetwork") == "on";
 
   long rx, tx, src, uid, mport;
-  if (n.mqttEnabled && n.mqttHost.isEmpty()) return reply(false, "MQTT broker address is required");
-  if (n.mqttHost.length() > 64) return reply(false, "MQTT broker address is too long");
+  if (!parseNum(arg("rxPin"), 0, 39, rx)) return reply(false, "Invalid RX pin");
+  if (!parseNum(arg("txPin"), 0, 39, tx)) return reply(false, "Invalid TX pin");
+  if (!parseNum(arg("sourceId"), 1, 12, src)) return reply(false, "Source ID must be 1-12");
+  if (!parseNum(arg("userId"), 0, 65535, uid)) return reply(false, "User ID must be a whole number from 0 to 65535");
   if (!parseNum(arg("mqttPort"), 1, 65535, mport)) return reply(false, "MQTT port must be 1-65535");
-  if (n.mqttBase.isEmpty() || n.mqttBase.length() > 48 || n.mqttBase.indexOf('+') >= 0 ||
-      n.mqttBase.indexOf('#') >= 0)
-    return reply(false, "MQTT base topic: 1-48 characters, no + or #");
-  if (n.haPrefix.isEmpty() || n.haPrefix.length() > 32 || n.haPrefix.indexOf('+') >= 0 || n.haPrefix.indexOf('#') >= 0)
-    return reply(false, "Home Assistant discovery prefix: 1-32 characters, no + or #");
-  n.mqttPort = mport;
-  if (n.wifiSsid.length() > 32) return reply(false, "WiFi name is longer than 32 characters");
-  if (n.wifiPassword.length() && (n.wifiPassword.length() < 8 || n.wifiPassword.length() > 63))
-    return reply(false, "WiFi password must be 8-63 characters");
-  if (n.apSsid.isEmpty() || n.apSsid.length() > 32) return reply(false, "Access point name must be 1-32 characters");
-  if (n.apPassword.length() < 8 || n.apPassword.length() > 63)
-    return reply(false, "Access point password must be 8-63 characters");
-  if (!isHostname(n.hostname)) return reply(false, "Hostname: letters, digits and '-' only (max 32)");
-  if (n.webUser.isEmpty()) return reply(false, "Web user can't be empty");
-  if (n.webPassword.length() < 4) return reply(false, "Web password must be at least 4 characters");
-  if (!parseNum(arg("rxPin"), 0, 39, rx) || !settingsRxPinValid(rx, n.displayEnabled))
-    return reply(false, n.displayEnabled && settingsPinReservedByDisplay(rx)
-                            ? "RX pin is used by the display - pick another or turn the display off"
-                            : "Invalid RX pin");
-  if (!parseNum(arg("txPin"), 0, 39, tx) || !settingsTxPinValid(tx, n.displayEnabled))
-    return reply(false, n.displayEnabled && settingsPinReservedByDisplay(tx)
-                            ? "TX pin is used by the display - pick another or turn the display off"
-                            : "Invalid TX pin");
-  if (rx == tx) return reply(false, "RX and TX must be different pins");
-  if (!isHex4(n.pcPassword)) return reply(false, "PC password must be exactly 4 digits (0-9, A-F)");
-  if (!parseNum(arg("sourceId"), 1, 0x0C, src)) return reply(false, "Source ID must be 1-12 (0x01-0x0C)");
-  if (!parseNum(arg("userId"), 0, 0xFFFF, uid)) return reply(false, "User ID must be 0-65535 (0x0000-0xFFFF)");
-  if (n.ntpServer.isEmpty() || n.ntpServer.length() > 64) return reply(false, "NTP server must be 1-64 characters");
-  if (n.tz.isEmpty() || n.tz.length() > 64) return reply(false, "Time zone must be 1-64 characters");
-
   n.rxPin = rx;
   n.txPin = tx;
   n.sourceId = src;
   n.userId = uid;
-  cfg = n;
-  settingsSave();
-  Serial.println("[settings] saved from web, rebooting");
-  reply(true, "Saved. Rebooting - reconnect in about 10 seconds.");
-  restartAtMs = millis() + 1500;
+  n.mqttPort = mport;
+  if (const char* err = settingsValidate(n)) return reply(false, err);
+
+  String msg = "Saved. Rebooting - reconnect in about 10 seconds";
+  if (n.staticIp && (!cfg.staticIp || n.ip != cfg.ip)) msg += " at http://" + n.ip + "/";
+  else if (!n.staticIp && cfg.staticIp) msg += " - the router will give it a new address (try http://" + n.hostname + ".local/)";
+  msg += ".";
+  reply(true, msg.c_str());
+  applySettings(n, "saved from web");
 }
 
+// ---- change the web password (no reboot) ------------------------------------------
+
+void handlePassword() {
+  if (!auth()) return;
+  String current = server.arg("current"), pw = server.arg("new"), confirm = server.arg("confirm");
+  if (current != cfg.webPassword) return reply(false, "The current password is wrong");
+  if (pw.length() < 6) return reply(false, "The new password must be at least 6 characters");
+  if (pw.length() > 64) return reply(false, "The new password is too long (max 64)");
+  if (pw != confirm) return reply(false, "The two new passwords don't match");
+  if (pw == current) return reply(false, "The new password is the same as the current one");
+  cfg.webPassword = pw;
+  settingsSave();
+  otaSetPassword(cfg.webPassword.c_str());
+  Serial.println("[settings] web password changed");
+  reply(true, "Password changed. Your browser will ask you to log in again with the new password.");
+}
+
+// ---- backup / restore -----------------------------------------------------------
+
+void handleBackup() {
+  if (!auth()) return;
+  JsonDocument d;
+  d["type"] = "espParadox-backup";
+  d["firmware"] = FW_VERSION;
+  if (time(nullptr) > 1700000000) {
+    char when[24];
+    time_t now = time(nullptr);
+    strftime(when, sizeof when, "%Y-%m-%d %H:%M", localtime(&now));
+    d["created"] = when;
+  }
+  settingsToJson(d["settings"].to<JsonObject>());
+  JsonArray zones = d["zones"].to<JsonArray>();
+  for (int z = 0; z < paradox::kZones; z++) {
+    JsonObject o = zones.add<JsonObject>();
+    o["id"] = z + 1;
+    o["name"] = zoneCustomLabel(z);
+    o["mode"] = zoneModeName(zoneMode(z));
+    o["sensor"] = zoneSensorName(zoneSensor(z));
+  }
+  String s;
+  serializeJsonPretty(d, s);
+  String file = "paradox-bridge-" + cfg.hostname + "-backup.json";
+  server.sendHeader("Content-Disposition", "attachment; filename=\"" + file + "\"");
+  server.send(200, "application/json", s);
+}
+
+void handleRestore() {
+  if (!auth()) return;
+  JsonDocument d;
+  if (deserializeJson(d, server.arg("plain"))) return reply(false, "That file isn't valid JSON");
+  if (d["type"] != "espParadox-backup") return reply(false, "That file isn't a Paradox bridge backup");
+  Settings n = cfg;
+  settingsFromJson(d["settings"].as<JsonObjectConst>(), n);
+  if (const char* err = settingsValidate(n)) return reply(false, (String("Backup not restored: ") + err).c_str());
+  int zonesRestored = 0;
+  for (JsonObjectConst o : d["zones"].as<JsonArrayConst>()) {
+    int z = o["id"] | 0;
+    if (z < 1 || z > paradox::kZones) continue;
+    String m = o["mode"] | "auto";
+    ZoneMode mode = m == "enabled" ? ZoneMode::Enabled : m == "disabled" ? ZoneMode::Disabled : ZoneMode::Auto;
+    ZoneSensor sensor = String(o["sensor"] | "contact") == "motion" ? ZoneSensor::Motion : ZoneSensor::Contact;
+    String name = o["name"] | "";
+    if (name.length() > kCustomLabelLen) name = name.substring(0, kCustomLabelLen);
+    zoneSet(z - 1, name, mode, sensor);
+    zonesRestored++;
+  }
+  String msg = "Backup restored (settings + " + String(zonesRestored) + " zones). Rebooting - reconnect in about 10 seconds.";
+  reply(true, msg.c_str());
+  applySettings(n, "restored from backup");
+}
 // ---- OTA: firmware upload from the Settings page ---------------------------
 bool uploadAuthorized = false;
 String uploadError;
@@ -325,6 +393,7 @@ void buildStatusJson(String& out) {
   char buf[96];
 
   d["version"] = FW_VERSION;
+  d["defaultPassword"] = cfg.webPassword == WEB_PASSWORD;  // still the factory password
   d["displayEnabled"] = cfg.displayEnabled;
   d["mqtt"] = mqttStatus();
   d["uptime"] = millis() / 1000;
@@ -527,6 +596,9 @@ void webBegin(paradox::Panel& p) {
     bool ok = panel->rereadConfig();
     reply(ok, ok ? "Reading the panel configuration (read only)" : "panel offline or already reading");
   });
+  server.on("/api/password", HTTP_POST, handlePassword);
+  server.on("/api/config/backup", HTTP_GET, handleBackup);
+  server.on("/api/config/restore", HTTP_POST, handleRestore);
   server.on("/api/config/reset", HTTP_POST, [] {
     if (!auth()) return;
     settingsReset();

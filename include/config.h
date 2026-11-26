@@ -1,6 +1,9 @@
 #pragma once
 // ============================================================================
-//  Factory defaults.
+//  Factory defaults - used only on a new board or after "Reset to defaults".
+//  On first boot every value is stored in flash; from then on the saved values
+//  are used and firmware updates (USB or OTA) never change them, even if this
+//  file changes. Back them up / restore them on the Settings page.
 //  Everything below except the baud rate and button pins can be changed at
 //  runtime on the web Settings page (http://<bridge>/settings); saved values are
 //  kept in flash and override these. To go back to these defaults: hold the
@@ -17,6 +20,14 @@
 #define AP_SSID        "ParadoxBridge"
 #define AP_PASSWORD    "paradox123"      // at least 8 characters
 #define HOSTNAME       "paradox"         // -> http://paradox.local
+
+// IP address: 0 = DHCP (automatic), 1 = static (the values below)
+#define WIFI_STATIC_IP   0
+#define WIFI_IP          ""              // e.g. "192.168.2.114"
+#define WIFI_SUBNET      "255.255.255.0"
+#define WIFI_GATEWAY     ""              // e.g. "192.168.2.1"
+#define WIFI_DNS1        ""              // empty = use the gateway
+#define WIFI_DNS2        ""
 
 // ---- Web UI / API login (HTTP basic auth) - CHANGE THESE -------------------
 #define WEB_USER       "admin"
@@ -57,6 +68,8 @@
 #define MQTT_PASSWORD       ""
 #define MQTT_BASE_TOPIC     "paradox"
 #define MQTT_ALLOW_CONTROL  1           // accept arm/disarm/bypass/PGM commands over MQTT
+#define MQTT_RETAIN_ZONES   1           // retain zone/N/open + zone/N/json
+#define MQTT_RETAIN_PANEL   1           // retain panel status (link, alarm, troubles, AC, battery, areas)
 #define MQTT_HA_DISCOVERY   1           // publish Home Assistant MQTT discovery configs
 #define MQTT_HA_PREFIX      "homeassistant"
 

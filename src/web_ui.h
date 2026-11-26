@@ -32,6 +32,7 @@ th{color:var(--mute);font-weight:600;font-size:12px}td.flags .pill{margin-right:
 <span class="mute" id="wifi"></span><span style="flex:1"></span>
 <button onclick="post('/api/time')">Sync panel clock</button><button onclick="act('beep')">Beep</button><button id="panelBtn" onclick="panelToggle()">…</button><a href="/settings"><button>Settings</button></a><button class="danger" onclick="if(confirm('Reboot the bridge? The panel connection drops for about 15 seconds.'))post('/api/reboot')">Reboot</button></header>
 <main>
+<div class="card" id="pwWarn" hidden style="border-color:var(--bad)"><b>Security:</b> the bridge still uses the factory password. <a href="/settings#pwBox">Change it in Settings</a>.</div>
 <div class="grid2" id="parts"></div>
 <div class="grid2">
  <div class="card"><h2>Panel</h2><dl id="panel"></dl></div>
@@ -55,6 +56,7 @@ function panelToggle(){
  if(panelStopped)post('/api/panel/connect');
  else if(confirm('Disconnect from the panel? Status and control stop until you press Connect.'))post('/api/panel/disconnect')}
 function render(s){
+ $('pwWarn').hidden=!s.defaultPassword;
  panelStopped=s.link.stopped;$('panelBtn').textContent=panelStopped?'Connect panel':'Disconnect panel';
  $('panelBtn').className=panelStopped?'':'danger';
  const ls=s.link.state;$('link').className='pill '+(ls==='online'?'ok':ls==='disconnected'?'bad':'warn');
@@ -128,6 +130,16 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>Password<input name="wifiPassword" type="password" maxlength="63" autocomplete="new-password"></label>
  <div class="hint" id="wifiPassHint"></div>
  <label>Open network (no password)<input name="wifiPasswordClear" type="checkbox"></label>
+ <label>IP address<select name="ipMode"><option value="dhcp">Automatic (DHCP)</option><option value="static">Static</option></select></label>
+ <div id="staticBox" hidden>
+  <label>IP address<input name="ip" placeholder="e.g. 192.168.1.50" inputmode="decimal" autocomplete="off"></label>
+  <label>Subnet mask<input name="subnet" placeholder="255.255.255.0" inputmode="decimal" autocomplete="off"></label>
+  <label>Gateway (router)<input name="gateway" placeholder="e.g. 192.168.1.1" inputmode="decimal" autocomplete="off"></label>
+  <label>DNS server 1<input name="dns1" placeholder="empty = the gateway" inputmode="decimal" autocomplete="off"></label>
+  <label>DNS server 2<input name="dns2" placeholder="optional" inputmode="decimal" autocomplete="off"></label>
+  <div class="hint">Pick an address outside your router's DHCP range (or reserve it in the router). <button type="button" id="ipCurrent">Use current values</button>
+  <br><span id="ipNow"></span><br>If the bridge becomes unreachable after a wrong address: hold its BOOT button 5 s to reset the settings, or connect to its ParadoxBridge access point.</div>
+ </div>
  <label>Hostname<input name="hostname" maxlength="32" pattern="[A-Za-z0-9-]+" required></label>
  <div class="hint">Reach the bridge at http://&lt;hostname&gt;.local</div>
 </fieldset>
@@ -138,8 +150,7 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
 </fieldset>
 <fieldset><legend>Web login</legend>
  <label>User<input name="webUser" maxlength="32" required></label>
- <label>New password<input name="webPassword" type="password" minlength="4" maxlength="64" autocomplete="new-password"></label>
- <div class="hint">Leave empty to keep the current password. Your browser will ask for the new login after the reboot.</div>
+ <div class="hint">The password is changed in the <b>Change password</b> section below.</div>
 </fieldset>
 <fieldset><legend>MQTT (Homebridge, Homey, ...)</legend>
  <label>Enable MQTT<input name="mqttEnabled" type="checkbox"></label>
@@ -151,6 +162,10 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>No password<input name="mqttPasswordClear" type="checkbox"></label>
  <label>Base topic<input name="mqttBase" maxlength="48" required pattern="[^+#]+"></label>
  <div class="hint">Prefix for every topic, e.g. <code>paradox</code> gives paradox/area/1/state, paradox/area/1/set, paradox/zone/3/open …</div>
+ <label>Retain zone states<input name="mqttRetainZones" type="checkbox"></label>
+ <div class="hint">zone/N/open and zone/N/json are kept by the broker, so a client that connects later gets the current state at once. Untick to send them only when they change.</div>
+ <label>Retain panel status<input name="mqttRetainPanel" type="checkbox"></label>
+ <div class="hint">Panel link, alarm, troubles, AC power, battery, bridge info and all area topics (state, homekit, ha, ready, json). Discovery configs and online/offline are always retained. Turning retain off removes the old retained values from the broker.</div>
  <label>Allow control over MQTT<input name="mqttAllowControl" type="checkbox"></label>
  <div class="hint">Arm / disarm / bypass / PGM commands. Untick for status only. Protect your broker with a password.</div>
  <label>Home Assistant discovery<input name="haDiscovery" type="checkbox"></label>
@@ -171,7 +186,21 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>TX pin (to panel RX)<select name="txPin"></select></label>
  <div class="hint">Panel TX is 5 V: use a voltage divider on the RX pin.</div>
  <label>PC password [911]<input name="pcPassword" type="password" maxlength="4" pattern="[0-9A-Fa-f]{4}" autocomplete="off"></label>
- <div class="hint" id="pcHint">4 digits. Leave empty to keep the current value.</div>
+ <div class="hint" id="pcHint">4 characters (0-9, A-F) - the same as section [911] in the panel. Factory value: 0000. Leave empty to keep the current value.
+  <br><button type="button" id="pcHelpBtn" style="margin-top:6px">How do I find the PC password?</button></div>
+ <div id="pcHelp" class="hint" hidden style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:6px 0 10px">
+  <b>Read section [911] on the panel's keypad</b> (needs the installer code). This only <i>shows</i> the value - nothing is changed.
+  <ol style="margin:6px 0 6px 18px;padding:0">
+   <li>If StayD is on, turn it off first: <b>[OFF]</b> + your user code + <b>[OFF]</b>.</li>
+   <li>Press <b>[ENTER]</b>, then the <b>installer code</b> (factory: <b>0000</b>, or <b>000000</b> on 6-digit panels). [ENTER] flashes: you're in programming.</li>
+   <li>Type <b>9 1 1</b>.</li>
+   <li><b>LCD keypad:</b> the 4 characters are shown on the screen - write them down.<br>
+       <b>LED keypad:</b> press <b>[ENTER]</b> once <u>before typing anything</u> - the 4 status lights flash (display mode). The first character is now shown as a lit zone light: zones 1-9 = 1-9, no zone = 0, zone 10-15 = A-F. Press <b>[ENTER]</b> to see the next character (4 in total).</li>
+   <li>Press <b>[CLEAR]</b> (repeat until [ENTER] stops flashing) to leave without changing anything.</li>
+  </ol>
+  <b>Careful:</b> on an LED keypad, typing digits without pressing [ENTER] first <i>changes</i> the password. If that happens, enter the same new value here.
+  If nobody changed it, it is <b>0000</b>.
+ </div>
  <label>Source ID<select name="sourceId">
   <option value="1">0x01 Winload direct</option><option value="2">0x02 Winload via IP module</option>
   <option value="3">0x03 Winload via GSM</option><option value="4">0x04 Winload via modem</option>
@@ -179,8 +208,8 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
   <option value="7">0x07 NEware via GSM</option><option value="8">0x08 NEware via modem</option>
   <option value="9">0x09 IP module (web page)</option><option value="10">0x0A VDMP3 direct</option>
   <option value="11">0x0B VDMP3 via GSM</option><option value="12">0x0C Remote</option></select></label>
- <label>User ID<input name="userId" placeholder="e.g. 0x0000"></label>
- <div class="hint">Decimal or hex (0x…), sent in bytes 34-35 of every request.</div>
+ <label>User ID<input name="userId" type="number" min="0" max="65535" step="1" inputmode="numeric" placeholder="0"></label>
+ <div class="hint">A plain number from 0 to 65535 - no "0x" needed. It is sent with every command as the protocol's <i>User ID</i> (identifies who the bridge acts for). With the default Winload-style login the panel doesn't use it, so <b>0</b> is fine - leave it unless you know your panel needs a specific value.</div>
  <label>Read configuration from panel<input name="readLabels" type="checkbox"></label>
 </fieldset>
 <fieldset><legend>Time</legend>
@@ -192,6 +221,24 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
 <div class="actions"><button class="primary" type="submit">Save and reboot</button>
 <button type="button" id="reboot">Reboot</button><button type="button" class="danger" id="reset">Reset to defaults</button></div>
 </form>
+<fieldset id="pwBox"><legend>Change password</legend>
+ <div class="hint" id="pwDefault" hidden style="color:var(--bad);font-weight:600;margin-bottom:6px">You are still using the factory password - please change it.</div>
+ <label>Current password<input id="pwCurrent" type="password" autocomplete="current-password"></label>
+ <label>New password<input id="pwNew" type="password" minlength="6" maxlength="64" autocomplete="new-password"></label>
+ <label>Confirm new password<input id="pwConfirm" type="password" minlength="6" maxlength="64" autocomplete="new-password"></label>
+ <div class="hint">At least 6 characters. Takes effect immediately (no reboot) and is also the password for PlatformIO network uploads.
+ Update it in apps that log in to the bridge (e.g. the Homey app settings).</div>
+ <div class="actions" style="margin-top:6px"><button type="button" class="primary" id="pwSave">Change password</button></div>
+ <div id="pwMsg" class="hint"></div>
+</fieldset>
+<fieldset><legend>Backup</legend>
+ <div class="hint" style="margin-bottom:8px">Download all bridge settings and zone names / modes / sensor types as a file, or restore them from one.
+ Settings are kept in flash and survive firmware updates - a backup is for replacing or resetting the board.
+ <b>The file contains your passwords</b> (WiFi, web, MQTT, PC password) - keep it private.</div>
+ <div class="actions"><a href="/api/config/backup"><button type="button">Download backup</button></a>
+ <input type="file" id="restoreFile" accept=".json,application/json" style="width:auto">
+ <button type="button" class="danger" id="restoreBtn">Restore backup</button></div>
+</fieldset>
 <fieldset><legend>Zones</legend>
  <div class="hint" style="margin-bottom:8px">Read from the panel and stored on the bridge only - the panel's programming is never changed.
  <b>Auto</b> follows the panel (hidden if the panel has the zone disabled). Leave the name empty to use the panel's label.</div>
@@ -216,31 +263,56 @@ function opts(sel,list,cur){sel.replaceChildren(...list.map(p=>{const o=document
 async function load(){
  const c=await (await fetch('/api/config')).json();
  for(const k of ['wifiSsid','apSsid','hostname','webUser','ntpServer','tz'])f[k].value=c[k];
- f.userId.value='0x'+c.userId.toString(16).padStart(4,'0').toUpperCase();
+ f.userId.value=c.userId;
  f.sourceId.value=c.sourceId;f.readLabels.checked=c.readLabels;
+ f.ipMode.value=c.staticIp?'static':'dhcp';
+ for(const k of ['ip','subnet','gateway','dns1','dns2'])f[k].value=c[k]||'';
+ if(!f.subnet.value)f.subnet.value='255.255.255.0';
+ ipCur=c.current;document.getElementById('ipNow').textContent=c.current.connected?('Now: '+c.current.ip+' / '+c.current.subnet+', gateway '+c.current.gateway+', DNS '+c.current.dns1):'';
+ document.getElementById('staticBox').hidden=!c.staticIp;
  f.displayEnabled.checked=c.displayEnabled;pinCfg=c.pins;
  f.mqttEnabled.checked=c.mqttEnabled;f.mqttHost.value=c.mqttHost;f.mqttPort.value=c.mqttPort;f.mqttUser.value=c.mqttUser;
- f.mqttBase.value=c.mqttBase;f.haDiscovery.checked=c.haDiscovery;f.haPrefix.value=c.haPrefix;f.mqttAllowControl.checked=c.mqttAllowControl;f.otaNetwork.checked=c.otaNetwork;
+ f.mqttBase.value=c.mqttBase;f.haDiscovery.checked=c.haDiscovery;f.haPrefix.value=c.haPrefix;f.mqttAllowControl.checked=c.mqttAllowControl;f.mqttRetainZones.checked=c.mqttRetainZones;f.mqttRetainPanel.checked=c.mqttRetainPanel;f.otaNetwork.checked=c.otaNetwork;
  f.mqttPassword.placeholder=c.mqttPasswordSet?'•••••• (unchanged)':'none';
  document.getElementById('mqttState').textContent='Status: '+c.mqttStatus;
  opts(f.rxPin,pinCfg[c.displayEnabled?'display':'generic'].rx,c.rxPin);opts(f.txPin,pinCfg[c.displayEnabled?'display':'generic'].tx,c.txPin);
  const keep='Leave empty to keep the current password';
  f.wifiPassword.placeholder=c.wifiPasswordSet?'•••••• (unchanged)':'none';
  f.apPassword.placeholder=c.apPasswordSet?'•••••• (unchanged)':'';
- f.webPassword.placeholder='•••••• (unchanged)';
  f.pcPassword.placeholder=c.pcPasswordSet?'•••• (unchanged)':'';
  document.getElementById('wifiPassHint').textContent=c.wifiPasswordSet?keep+'.':'';
 }
 async function post(url,body){
  try{const r=await fetch(url,{method:'POST',body});const j=await r.json();show(j.message,!j.ok);
   if(j.ok&&/Reboot/i.test(j.message))setTimeout(()=>location.reload(),12000)}catch(e){show('Request failed',true)}}
-let pinCfg=null;
+let pinCfg=null,ipCur=null;
+f.ipMode.onchange=()=>{document.getElementById('staticBox').hidden=f.ipMode.value!=='static';
+ if(f.ipMode.value==='static'&&!f.ip.value&&ipCur&&ipCur.connected)document.getElementById('ipCurrent').click()};
+document.getElementById('ipCurrent').onclick=()=>{if(!ipCur||!ipCur.connected){show('The bridge is not on your WiFi right now',true);return}
+ f.ip.value=ipCur.ip;f.subnet.value=ipCur.subnet;f.gateway.value=ipCur.gateway;f.dns1.value=ipCur.dns1;f.dns2.value=(ipCur.dns2&&ipCur.dns2!=='0.0.0.0')?ipCur.dns2:'';
+ show('Filled in the current address - make sure your router won\'t give it to another device (reserve it, or pick one outside the DHCP range).')};
 f.displayEnabled.onchange=()=>{if(!pinCfg)return;const k=f.displayEnabled.checked?'display':'generic';
  const rx=+f.rxPin.value,tx=+f.txPin.value;opts(f.rxPin,pinCfg[k].rx,rx);opts(f.txPin,pinCfg[k].tx,tx);
  if(!pinCfg[k].rx.includes(rx)||!pinCfg[k].tx.includes(tx))show('A selected pin is used by the display - check the RX/TX pins',true)};
 f.onsubmit=e=>{e.preventDefault();post('/api/config',new URLSearchParams(new FormData(f)))};
 document.getElementById('haPub').onclick=async()=>{
  try{const r=await fetch('/api/mqtt/republish',{method:'POST'});const j=await r.json();show(j.message,!j.ok)}catch(e){show('Request failed',true)}};
+fetch('/api/status').then(r=>r.json()).then(s=>{document.getElementById('pwDefault').hidden=!s.defaultPassword}).catch(()=>{});
+document.getElementById('pwSave').onclick=async()=>{
+ const m=document.getElementById('pwMsg'),cur=document.getElementById('pwCurrent'),nw=document.getElementById('pwNew'),cf=document.getElementById('pwConfirm');
+ if(nw.value.length<6){m.textContent='The new password must be at least 6 characters';m.style.color='var(--bad)';return}
+ if(nw.value!==cf.value){m.textContent="The two new passwords don't match";m.style.color='var(--bad)';return}
+ try{const r=await fetch('/api/password',{method:'POST',body:new URLSearchParams({current:cur.value,new:nw.value,confirm:cf.value})});
+  const j=await r.json();m.textContent=j.message;m.style.color=j.ok?'':'var(--bad)';
+  if(j.ok){cur.value=nw.value=cf.value='';document.getElementById('pwDefault').hidden=true;setTimeout(()=>location.reload(),2500)}
+ }catch(e){m.textContent='Request failed';m.style.color='var(--bad)'}};
+document.getElementById('pcHelpBtn').onclick=()=>{const h=document.getElementById('pcHelp');h.hidden=!h.hidden};
+document.getElementById('restoreBtn').onclick=async()=>{
+ const file=document.getElementById('restoreFile').files[0];
+ if(!file){show('Choose a backup file first',true);return}
+ if(!confirm('Restore all settings and zone names from '+file.name+' and reboot the bridge?'))return;
+ try{const r=await fetch('/api/config/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:await file.text()});
+  const j=await r.json();show(j.message,!j.ok);if(j.ok)setTimeout(()=>location.reload(),12000)}catch(e){show('Restore failed',true)}};
 document.getElementById('reboot').onclick=()=>post('/api/reboot');
 document.getElementById('reset').onclick=()=>{if(confirm('Erase all saved settings and reboot with the built-in defaults?'))post('/api/config/reset')};
 document.getElementById('scan').onclick=async e=>{

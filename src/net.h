@@ -8,6 +8,7 @@ struct NetInfo {
   String ssid;  // joined network
   String ip;    // station IP
   int rssi;
+  String gateway, subnet, dns1, dns2;  // current (DHCP or static) values
   String wantedSsid;  // configured network name
   String apSsid;
   String apPassword;

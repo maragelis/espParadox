@@ -6,4 +6,5 @@
 
 void otaBegin();
 void otaLoop();
+void otaSetPassword(const char* password);  // after a web password change
 void otaProgress(const char* source, unsigned done, unsigned total);  // display + log
