@@ -1,0 +1,11 @@
+{
+  "title": { "en": "A Paradox panel event was received" },
+  "hint": { "en": "Fires for every live event from the panel (zone open, arm, disarm, alarm, trouble...)" },
+  "tokens": [
+    { "name": "text", "type": "string", "title": { "en": "Event" }, "example": { "en": "Zone open: Front door" } },
+    { "name": "group", "type": "number", "title": { "en": "Event group" }, "example": 1 },
+    { "name": "sub", "type": "number", "title": { "en": "Sub-group" }, "example": 3 },
+    { "name": "area", "type": "number", "title": { "en": "Area" }, "example": 1 },
+    { "name": "time", "type": "string", "title": { "en": "Panel time" }, "example": { "en": "2026-11-26 21:16" } }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "1.0.0": {
+    "en": "First version: alarm area and zone devices, flow cards, local connection to the ESP32 bridge."
+  },
+  "1.0.1": {
+    "en": "New app and device artwork, app description."
+  },
+  "1.1.0": {
+    "en": "Bridge connection is set once in the app settings. The bridge is found automatically on your network (mDNS, bridge firmware 1.6.9+)."
+  },
+  "1.2.0": {
+    "en": "Timeline entries for arming, disarming and alarms, with who did it (panel user, keyswitch, Homey...). Can be switched off in the app settings."
+  },
+  "1.3.0": {
+    "en": "New flow card 'Set alarm mode ... as [who]' so the timeline shows which person armed or disarmed (e.g. with the Name tag of a presence trigger)."
+  },
+  "1.4.0": {
+    "en": "Panel AC power: 'AC power failure' on alarm areas, flow triggers 'lost AC power' / 'AC power restored', condition 'AC power is OK', timeline entries (bridge firmware 1.8.0+)."
+  },
+  "1.4.1": {
+    "en": "Renamed to Paradox SP/MG Bridge."
+  },
+  "1.4.2": {
+    "en": "How-to instructions on the app settings page."
+  }
+}

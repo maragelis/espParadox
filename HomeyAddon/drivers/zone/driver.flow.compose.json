@@ -1,0 +1,15 @@
+{
+  "conditions": [
+    {
+      "id": "zone_is_bypassed",
+      "title": { "en": "Zone !{{is|is not}} bypassed" }
+    }
+  ],
+  "actions": [
+    {
+      "id": "zone_toggle_bypass",
+      "title": { "en": "Toggle zone bypass" },
+      "hint": { "en": "The panel toggles bypass on / off for this zone" }
+    }
+  ]
+}

@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+<head>
+  <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+  <style>
+    .howto details { border-bottom: 1px solid rgba(128, 128, 128, .25); padding: 8px 0; }
+    .howto summary { cursor: pointer; font-weight: 600; }
+    .howto ol, .howto ul { margin: 6px 0 4px 18px; padding: 0; }
+    .howto li { margin: 3px 0; }
+    .howto code { font-size: 90%; }
+    .howto p { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <header class="homey-header">
+    <h1 class="homey-title">Paradox SP/MG Bridge</h1>
+    <p class="homey-subtitle">Connection used by every Paradox area and zone device. Leave the address empty to find the bridge automatically on your network (mDNS).</p>
+  </header>
+
+  <fieldset class="homey-form-fieldset howto">
+    <legend class="homey-form-legend">How to</legend>
+
+    <details>
+      <summary>1. Get started</summary>
+      <ol>
+        <li>The ESP32 bridge must be connected to the panel's serial port and to your WiFi. Open its web page (its IP address in a browser) and check that the panel shows <i>online</i>.</li>
+        <li>Below, enter the bridge's <b>web user</b> and <b>web password</b> (the login of its web page). Leave <b>Bridge address</b> empty - the bridge is found automatically. Press <b>Test connection</b>, then <b>Save</b>.</li>
+        <li>Status should say <i>Connected to bridge … Panel: online</i>.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>2. Add your alarm areas and zones</summary>
+      <ol>
+        <li>Homey: <b>Devices → + → Paradox SP/MG Bridge → Alarm area</b>. Pick the area(s). Each area can be armed / disarmed from its tile.</li>
+        <li>Then <b>Alarm zone</b>: pick the zones you want as sensors.</li>
+        <li>Zone names, which zones exist and whether a zone is a <b>contact</b> or <b>motion</b> sensor are set on the bridge's web page: <b>Settings → Zones</b>. Changes there show up in Homey by themselves.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>3. Arm and disarm</summary>
+      <ul>
+        <li><b>Alarm tile</b> (Homey's home alarm): <i>armed</i> = Full arm, <i>partially armed</i> = Stay or Sleep (choose in the area's device settings), <i>disarmed</i>.</li>
+        <li><b>Alarm mode</b> picker: the panel's own Disarmed / Stay / Sleep / Full.</li>
+        <li>An area can't arm while a zone is open - check <b>Ready to arm</b> first.</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>4. Flow ideas</summary>
+      <ul>
+        <li><b>Arm when everybody leaves:</b> WHEN <i>Someone left home</i> AND <i>Everybody is away</i> → THEN <i>Set alarm mode to Full arm as [Name]</i>.</li>
+        <li><b>Disarm on arrival:</b> WHEN <i>Someone came home</i> → THEN <i>Set alarm mode to Disarm as [Name]</i>.</li>
+        <li><b>Alarm notification:</b> WHEN <i>Alarm turned on</i> (area) → THEN send a push notification / turn on lights.</li>
+        <li><b>Door left open:</b> WHEN a contact zone opens AND the area is armed → THEN notify.</li>
+        <li><b>Power cut:</b> WHEN <i>Paradox panel lost AC power</i> → THEN notify.</li>
+        <li><b>Anything else:</b> WHEN <i>A Paradox panel event was received</i> gives the event text, group, area and time.</li>
+      </ul>
+      <p>Use <i>Set alarm mode … as [who]</i> with the <b>Name</b> tag so the timeline shows the person. Homey doesn't tell apps who tapped a tile, so taps show as "by Homey".</p>
+    </details>
+
+    <details>
+      <summary>5. Timeline</summary>
+      <p>Every arm, disarm, alarm and AC power change is added to the Homey timeline with who did it: the panel user's name (keypad / remote), keyswitch, auto-arm, Homey, or the bridge's web page / MQTT. Panel user names come from the panel's user labels. Switch it off below under <b>Timeline</b>.</p>
+    </details>
+
+    <details>
+      <summary>6. Troubleshooting</summary>
+      <ul>
+        <li><b>No bridge found</b>: the bridge needs firmware 1.6.9 or later. A self-hosted Homey in Docker needs host networking for automatic discovery - or type the bridge's IP address (reserve it on your router).</li>
+        <li><b>Wrong bridge user or password</b>: use the login of the bridge's web page.</li>
+        <li><b>Devices unavailable "Panel disconnected"</b>: the panel link is down or was disconnected on the bridge's web page (press <i>Connect panel</i> there).</li>
+        <li><b>A zone is unavailable</b>: it's set to <i>Never</i> on the bridge's Settings → Zones page.</li>
+        <li><b>Arming fails</b>: the area isn't ready (a zone is open) or the panel refused it - the bridge's web page shows the last action result.</li>
+      </ul>
+    </details>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend">Status</legend>
+    <p id="state" class="homey-form-help">Loading…</p>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend">Bridges found on your network</legend>
+    <div id="found"><p class="homey-form-help">Searching…</p></div>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend">Connection</legend>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="host">Bridge address</label>
+      <input class="homey-form-input" id="host" type="text" placeholder="empty = find automatically" autocomplete="off" />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="username">Web user</label>
+      <input class="homey-form-input" id="username" type="text" autocomplete="off" />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="password">Web password</label>
+      <input class="homey-form-input" id="password" type="password" autocomplete="off" />
+    </div>
+    <p id="message" class="homey-form-help"></p>
+  </fieldset>
+
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend">Timeline</legend>
+    <label class="homey-form-checkbox">
+      <input class="homey-form-checkbox-input" id="timeline" type="checkbox" />
+      <span class="homey-form-checkbox-checkmark"></span>
+      <span class="homey-form-checkbox-text">Add arm / disarm / alarm entries to the Homey timeline, with who did it</span>
+    </label>
+  </fieldset>
+
+  <button id="test" class="homey-button-secondary-full">Test connection</button>
+  <br /><br />
+  <button id="save" class="homey-button-primary-full">Save</button>
+
+  <script type="text/javascript">
+    function onHomeyReady(Homey) {
+      const $ = (id) => document.getElementById(id);
+      let passwordSet = false;
+
+      function formValues() {
+        return { host: $('host').value.trim(), username: $('username').value.trim(), password: $('password').value };
+      }
+
+      function showState(s) {
+        let text;
+        if (s.reachable) {
+          text = `Connected to bridge v${s.bridgeVersion} at ${s.effectiveHost}`
+            + ` (${s.source === 'mdns' ? 'found automatically' : 'fixed address'}). Panel: ${s.panelLink}.`;
+        } else if (!s.effectiveHost) {
+          text = 'No bridge configured and none found on the network yet.';
+        } else {
+          text = `Not connected to ${s.effectiveHost}${s.lastError ? `: ${s.lastError}` : ''}.`;
+        }
+        $('state').textContent = text;
+
+        const box = $('found');
+        box.innerHTML = '';
+        if (!s.discovered.length) {
+          const p = document.createElement('p');
+          p.className = 'homey-form-help';
+          p.textContent = 'None found. Bridge firmware 1.6.9+ is needed, and Homey must be on the same network (for a self-hosted Homey in Docker: host networking).';
+          box.appendChild(p);
+        }
+        for (const b of s.discovered) {
+          const row = document.createElement('div');
+          row.className = 'homey-form-group';
+          const label = document.createElement('span');
+          label.textContent = `${b.host}${b.version ? `  -  v${b.version}` : ''}  `;
+          const use = document.createElement('button');
+          use.className = 'homey-button-small';
+          use.textContent = 'Use this address';
+          use.onclick = () => { $('host').value = b.host; $('message').textContent = 'Address filled in - press Save (or leave it empty to keep finding it automatically).'; };
+          row.appendChild(label);
+          row.appendChild(use);
+          box.appendChild(row);
+        }
+      }
+
+      function refresh() {
+        Homey.api('GET', '/state', null, (err, s) => {
+          if (err) { $('state').textContent = err.message || String(err); return; }
+          showState(s);
+        });
+      }
+
+      // Load saved values once
+      Homey.api('GET', '/state', null, (err, s) => {
+        if (err) { $('state').textContent = err.message || String(err); Homey.ready(); return; }
+        $('host').value = s.host;
+        $('username').value = s.username;
+        passwordSet = s.passwordSet;
+        $('timeline').checked = s.timeline;
+        $('password').placeholder = passwordSet ? '•••••• (saved - leave empty to keep)' : '';
+        showState(s);
+        Homey.ready();
+      });
+      setInterval(refresh, 5000);
+
+      $('timeline').onchange = () => {
+        Homey.set('timeline', $('timeline').checked, (err) => {
+          $('message').textContent = err ? (err.message || String(err)) : `Timeline entries ${$('timeline').checked ? 'on' : 'off'}.`;
+        });
+      };
+
+      $('test').onclick = () => {
+        $('message').textContent = 'Testing…';
+        Homey.api('POST', '/test', formValues(), (err, r) => {
+          $('message').textContent = err
+            ? `Failed: ${err.message || err}`
+            : `OK - bridge v${r.version} at ${r.host}, panel ${r.panelLink}.`;
+        });
+      };
+
+      $('save').onclick = () => {
+        const v = formValues();
+        Homey.set('host', v.host, (e1) => {
+          if (e1) return Homey.alert(e1.message || String(e1));
+          Homey.set('username', v.username || 'admin', (e2) => {
+            if (e2) return Homey.alert(e2.message || String(e2));
+            const done = () => { $('message').textContent = 'Saved.'; $('password').value = ''; setTimeout(refresh, 2500); };
+            if (!v.password) return done(); // keep the saved password
+            Homey.set('password', v.password, (e3) => {
+              if (e3) return Homey.alert(e3.message || String(e3));
+              passwordSet = true;
+              $('password').placeholder = '•••••• (saved - leave empty to keep)';
+              done();
+            });
+          });
+        });
+      };
+    }
+  </script>
+</body>
+</html>

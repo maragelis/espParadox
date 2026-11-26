@@ -1,0 +1,87 @@
+<header class="homey-header">
+  <h1 class="homey-title">Connect to the Paradox bridge</h1>
+  <p class="homey-subtitle" id="subtitle">Looking for the bridge…</p>
+</header>
+
+<form id="bridge-form" class="homey-form" style="display:none">
+  <div class="homey-form-group" id="found-group" style="display:none">
+    <label class="homey-form-label" for="found">Bridges found on your network</label>
+    <select class="homey-form-select" id="found"></select>
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="host">Bridge address</label>
+    <input class="homey-form-input" id="host" type="text" placeholder="empty = find automatically" autocomplete="off" />
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="username">Web user</label>
+    <input class="homey-form-input" id="username" type="text" value="admin" autocomplete="off" />
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="password">Web password</label>
+    <input class="homey-form-input" id="password" type="password" autocomplete="off" />
+  </div>
+  <p class="homey-form-help">Saved in the app settings and used by every Paradox device.</p>
+  <p id="message" class="homey-form-help"></p>
+  <button id="connect" type="submit" class="homey-button-primary-full">Connect</button>
+</form>
+
+<script type="application/javascript">
+  const form = document.getElementById('bridge-form');
+  const message = document.getElementById('message');
+  const subtitle = document.getElementById('subtitle');
+  const button = document.getElementById('connect');
+  const hostInput = document.getElementById('host');
+  const found = document.getElementById('found');
+
+  // Already configured (app settings or mDNS)? Go straight to the device list.
+  Homey.emit('check').then((r) => {
+    if (r.ok) {
+      subtitle.textContent = `Bridge v${r.version} at ${r.host} (${r.source === 'mdns' ? 'found automatically' : 'from the app settings'}).`;
+      Homey.showView('list_devices');
+      return;
+    }
+    subtitle.textContent = 'Enter the bridge address and its web login (the same as its web page).';
+    hostInput.value = r.host || '';
+    document.getElementById('username').value = r.username || 'admin';
+    if (r.passwordSet) document.getElementById('password').placeholder = '•••••• (saved)';
+    if (r.discovered && r.discovered.length) {
+      document.getElementById('found-group').style.display = '';
+      found.innerHTML = '';
+      const auto = document.createElement('option');
+      auto.value = '';
+      auto.textContent = 'Find automatically (recommended)';
+      found.appendChild(auto);
+      for (const b of r.discovered) {
+        const o = document.createElement('option');
+        o.value = b.host;
+        o.textContent = `${b.host}${b.version ? ` - v${b.version}` : ''}`;
+        found.appendChild(o);
+      }
+      found.onchange = () => { hostInput.value = found.value; };
+    }
+    message.textContent = r.error ? `Not connected: ${r.error}` : '';
+    form.style.display = '';
+  }).catch((err) => {
+    subtitle.textContent = (err && err.message) || String(err);
+    form.style.display = '';
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    message.textContent = 'Connecting…';
+    button.disabled = true;
+    Homey.emit('connect', {
+      host: hostInput.value,
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+    })
+      .then((info) => {
+        message.textContent = `Connected to bridge v${info.version} (panel ${info.link}).`;
+        Homey.showView('list_devices');
+      })
+      .catch((err) => {
+        message.textContent = (err && err.message) || String(err);
+        button.disabled = false;
+      });
+  });
+</script>

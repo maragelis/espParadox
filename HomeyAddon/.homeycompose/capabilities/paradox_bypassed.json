@@ -1,0 +1,11 @@
+{
+  "type": "boolean",
+  "title": { "en": "Bypassed" },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "insightsTitleTrue": { "en": "Bypassed" },
+  "insightsTitleFalse": { "en": "Not bypassed" },
+  "icon": "/assets/bypass.svg"
+}

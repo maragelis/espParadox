@@ -1,0 +1,30 @@
+{
+  "name": { "en": "Alarm area" },
+  "class": "homealarm",
+  "capabilities": ["homealarm_state", "paradox_area_mode", "alarm_generic", "paradox_ready", "paradox_ac_failure"],
+  "capabilitiesOptions": {
+    "alarm_generic": { "title": { "en": "Alarm" } }
+  },
+  "platforms": ["local"],
+  "images": { "small": "/drivers/area/assets/images/small.png", "large": "/drivers/area/assets/images/large.png", "xlarge": "/drivers/area/assets/images/xlarge.png" },
+  "connectivity": ["lan"],
+  "pair": [
+    { "id": "bridge" },
+    { "id": "list_devices", "template": "list_devices", "navigation": { "next": "add_devices" } },
+    { "id": "add_devices", "template": "add_devices" }
+  ],
+  "settings": [
+    {
+      "type": "group",
+      "label": { "en": "Arming" },
+      "children": [
+        { "id": "partial_mode", "type": "dropdown", "label": { "en": "\"Partially armed\" means" }, "value": "stay",
+          "hint": { "en": "Which panel mode Homey's \"partially armed\" uses" },
+          "values": [
+            { "id": "stay", "label": { "en": "Stay arm" } },
+            { "id": "sleep", "label": { "en": "Sleep arm" } }
+          ] }
+      ]
+    }
+  ]
+}

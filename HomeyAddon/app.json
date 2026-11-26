@@ -1,0 +1,657 @@
+{
+  "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
+  "id": "com.espparadox.bridge",
+  "version": "1.4.2",
+  "compatibility": ">=5.0.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "Paradox SP/MG Bridge"
+  },
+  "description": {
+    "en": "Arm, disarm and monitor your Paradox alarm from Homey"
+  },
+  "category": [
+    "security"
+  ],
+  "brandColor": "#B71C1C",
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "permissions": [],
+  "author": {
+    "name": "espParadox"
+  },
+  "api": {
+    "getState": {
+      "method": "GET",
+      "path": "/state"
+    },
+    "testConnection": {
+      "method": "POST",
+      "path": "/test"
+    }
+  },
+  "flow": {
+    "triggers": [
+      {
+        "title": {
+          "en": "Paradox panel lost AC power"
+        },
+        "hint": {
+          "en": "The panel reports an AC (mains) failure trouble - it runs on its battery."
+        },
+        "id": "ac_lost"
+      },
+      {
+        "title": {
+          "en": "Paradox panel AC power restored"
+        },
+        "id": "ac_restored"
+      },
+      {
+        "title": {
+          "en": "A Paradox panel event was received"
+        },
+        "hint": {
+          "en": "Fires for every live event from the panel (zone open, arm, disarm, alarm, trouble...)"
+        },
+        "tokens": [
+          {
+            "name": "text",
+            "type": "string",
+            "title": {
+              "en": "Event"
+            },
+            "example": {
+              "en": "Zone open: Front door"
+            }
+          },
+          {
+            "name": "group",
+            "type": "number",
+            "title": {
+              "en": "Event group"
+            },
+            "example": 1
+          },
+          {
+            "name": "sub",
+            "type": "number",
+            "title": {
+              "en": "Sub-group"
+            },
+            "example": 3
+          },
+          {
+            "name": "area",
+            "type": "number",
+            "title": {
+              "en": "Area"
+            },
+            "example": 1
+          },
+          {
+            "name": "time",
+            "type": "string",
+            "title": {
+              "en": "Panel time"
+            },
+            "example": {
+              "en": "2026-11-26 21:16"
+            }
+          }
+        ],
+        "id": "panel_event"
+      },
+      {
+        "id": "area_mode_changed",
+        "title": {
+          "en": "Alarm mode changed"
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode"
+            },
+            "example": {
+              "en": "full"
+            }
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "title": {
+          "en": "Paradox panel AC power !{{is|is not}} OK"
+        },
+        "id": "ac_ok"
+      },
+      {
+        "id": "area_mode_is",
+        "title": {
+          "en": "Alarm mode !{{is|is not}}"
+        },
+        "titleFormatted": {
+          "en": "Alarm mode !{{is|is not}} [[mode]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode"
+            },
+            "values": [
+              {
+                "id": "disarmed",
+                "label": {
+                  "en": "Disarmed"
+                }
+              },
+              {
+                "id": "stay",
+                "label": {
+                  "en": "Stay armed"
+                }
+              },
+              {
+                "id": "sleep",
+                "label": {
+                  "en": "Sleep armed"
+                }
+              },
+              {
+                "id": "full",
+                "label": {
+                  "en": "Full armed"
+                }
+              },
+              {
+                "id": "alarm",
+                "label": {
+                  "en": "In alarm"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "area_is_ready",
+        "title": {
+          "en": "Area !{{is|is not}} ready to arm"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          }
+        ]
+      },
+      {
+        "id": "zone_is_bypassed",
+        "title": {
+          "en": "Zone !{{is|is not}} bypassed"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=zone"
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "area_set_mode",
+        "title": {
+          "en": "Set alarm mode"
+        },
+        "titleFormatted": {
+          "en": "Set alarm mode to [[mode]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode"
+            },
+            "values": [
+              {
+                "id": "disarmed",
+                "label": {
+                  "en": "Disarm"
+                }
+              },
+              {
+                "id": "stay",
+                "label": {
+                  "en": "Stay arm"
+                }
+              },
+              {
+                "id": "sleep",
+                "label": {
+                  "en": "Sleep arm"
+                }
+              },
+              {
+                "id": "full",
+                "label": {
+                  "en": "Full arm"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "area_set_mode_as",
+        "title": {
+          "en": "Set alarm mode as a person"
+        },
+        "titleFormatted": {
+          "en": "Set alarm mode to [[mode]] as [[who]]"
+        },
+        "hint": {
+          "en": "Same as \"Set alarm mode\", but the timeline says who did it. Use the Name tag of a presence trigger (e.g. \"Someone left home\") or type a name."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode"
+            },
+            "values": [
+              {
+                "id": "disarmed",
+                "label": {
+                  "en": "Disarm"
+                }
+              },
+              {
+                "id": "stay",
+                "label": {
+                  "en": "Stay arm"
+                }
+              },
+              {
+                "id": "sleep",
+                "label": {
+                  "en": "Sleep arm"
+                }
+              },
+              {
+                "id": "full",
+                "label": {
+                  "en": "Full arm"
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "name": "who",
+            "title": {
+              "en": "Who"
+            },
+            "placeholder": {
+              "en": "e.g. Name tag"
+            }
+          }
+        ]
+      },
+      {
+        "id": "area_beep",
+        "title": {
+          "en": "Make the panel beep"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          }
+        ]
+      },
+      {
+        "id": "area_pgm",
+        "title": {
+          "en": "Switch a PGM output"
+        },
+        "titleFormatted": {
+          "en": "Switch PGM [[pgm]] [[state]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=area"
+          },
+          {
+            "type": "number",
+            "name": "pgm",
+            "title": {
+              "en": "PGM"
+            },
+            "min": 1,
+            "max": 16,
+            "step": 1,
+            "placeholder": {
+              "en": "1-16"
+            }
+          },
+          {
+            "type": "dropdown",
+            "name": "state",
+            "title": {
+              "en": "State"
+            },
+            "values": [
+              {
+                "id": "on",
+                "label": {
+                  "en": "on"
+                }
+              },
+              {
+                "id": "off",
+                "label": {
+                  "en": "off"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "zone_toggle_bypass",
+        "title": {
+          "en": "Toggle zone bypass"
+        },
+        "hint": {
+          "en": "The panel toggles bypass on / off for this zone"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=zone"
+          }
+        ]
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "name": {
+        "en": "Alarm area"
+      },
+      "class": "homealarm",
+      "capabilities": [
+        "homealarm_state",
+        "paradox_area_mode",
+        "alarm_generic",
+        "paradox_ready",
+        "paradox_ac_failure"
+      ],
+      "capabilitiesOptions": {
+        "alarm_generic": {
+          "title": {
+            "en": "Alarm"
+          }
+        }
+      },
+      "platforms": [
+        "local"
+      ],
+      "images": {
+        "small": "/drivers/area/assets/images/small.png",
+        "large": "/drivers/area/assets/images/large.png",
+        "xlarge": "/drivers/area/assets/images/xlarge.png"
+      },
+      "connectivity": [
+        "lan"
+      ],
+      "pair": [
+        {
+          "id": "bridge"
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "settings": [
+        {
+          "type": "group",
+          "label": {
+            "en": "Arming"
+          },
+          "children": [
+            {
+              "id": "partial_mode",
+              "type": "dropdown",
+              "label": {
+                "en": "\"Partially armed\" means"
+              },
+              "value": "stay",
+              "hint": {
+                "en": "Which panel mode Homey's \"partially armed\" uses"
+              },
+              "values": [
+                {
+                  "id": "stay",
+                  "label": {
+                    "en": "Stay arm"
+                  }
+                },
+                {
+                  "id": "sleep",
+                  "label": {
+                    "en": "Sleep arm"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "id": "area"
+    },
+    {
+      "name": {
+        "en": "Alarm zone"
+      },
+      "class": "sensor",
+      "capabilities": [
+        "alarm_contact",
+        "alarm_tamper",
+        "alarm_battery",
+        "paradox_bypassed"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "images": {
+        "small": "/drivers/zone/assets/images/small.png",
+        "large": "/drivers/zone/assets/images/large.png",
+        "xlarge": "/drivers/zone/assets/images/xlarge.png"
+      },
+      "connectivity": [
+        "lan"
+      ],
+      "energy": {
+        "batteries": [
+          "OTHER"
+        ]
+      },
+      "pair": [
+        {
+          "id": "bridge"
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "zone"
+    }
+  ],
+  "capabilities": {
+    "paradox_ac_failure": {
+      "type": "boolean",
+      "title": {
+        "en": "AC power failure"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "AC power lost"
+      },
+      "insightsTitleFalse": {
+        "en": "AC power restored"
+      },
+      "icon": "/assets/ac.svg"
+    },
+    "paradox_area_mode": {
+      "type": "enum",
+      "title": {
+        "en": "Alarm mode"
+      },
+      "desc": {
+        "en": "Arm / disarm the area"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "picker",
+      "insights": false,
+      "values": [
+        {
+          "id": "disarmed",
+          "title": {
+            "en": "Disarmed"
+          }
+        },
+        {
+          "id": "stay",
+          "title": {
+            "en": "Stay armed"
+          }
+        },
+        {
+          "id": "sleep",
+          "title": {
+            "en": "Sleep armed"
+          }
+        },
+        {
+          "id": "full",
+          "title": {
+            "en": "Full armed"
+          }
+        },
+        {
+          "id": "alarm",
+          "title": {
+            "en": "In alarm"
+          }
+        }
+      ]
+    },
+    "paradox_bypassed": {
+      "type": "boolean",
+      "title": {
+        "en": "Bypassed"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "Bypassed"
+      },
+      "insightsTitleFalse": {
+        "en": "Not bypassed"
+      },
+      "icon": "/assets/bypass.svg"
+    },
+    "paradox_ready": {
+      "type": "boolean",
+      "title": {
+        "en": "Ready to arm"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "Ready to arm"
+      },
+      "insightsTitleFalse": {
+        "en": "Not ready"
+      },
+      "icon": "/assets/ready.svg"
+    }
+  },
+  "discovery": {
+    "paradox": {
+      "type": "mdns-sd",
+      "mdns-sd": {
+        "name": "paradox",
+        "protocol": "tcp"
+      },
+      "id": "{{txt.id}}"
+    }
+  }
+}

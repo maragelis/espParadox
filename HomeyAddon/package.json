@@ -1,0 +1,11 @@
+{
+  "name": "com.espparadox.bridge",
+  "version": "1.4.2",
+  "description": "Homey app for the ESP32 Paradox serial bridge",
+  "main": "app.js",
+  "private": true,
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {}
+}

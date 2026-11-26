@@ -1,0 +1,24 @@
+{
+  "id": "com.espparadox.bridge",
+  "version": "1.4.2",
+  "compatibility": ">=5.0.0",
+  "sdk": 3,
+  "platforms": ["local"],
+  "name": {
+    "en": "Paradox SP/MG Bridge"
+  },
+  "description": {
+    "en": "Arm, disarm and monitor your Paradox alarm from Homey"
+  },
+  "category": ["security"],
+  "brandColor": "#B71C1C",
+  "images": { "small": "/assets/images/small.png", "large": "/assets/images/large.png", "xlarge": "/assets/images/xlarge.png" },
+  "permissions": [],
+  "author": {
+    "name": "espParadox"
+  },
+  "api": {
+    "getState": { "method": "GET", "path": "/state" },
+    "testConnection": { "method": "POST", "path": "/test" }
+  }
+}

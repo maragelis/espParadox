@@ -1,0 +1,16 @@
+{
+  "type": "enum",
+  "title": { "en": "Alarm mode" },
+  "desc": { "en": "Arm / disarm the area" },
+  "getable": true,
+  "setable": true,
+  "uiComponent": "picker",
+  "insights": false,
+  "values": [
+    { "id": "disarmed", "title": { "en": "Disarmed" } },
+    { "id": "stay", "title": { "en": "Stay armed" } },
+    { "id": "sleep", "title": { "en": "Sleep armed" } },
+    { "id": "full", "title": { "en": "Full armed" } },
+    { "id": "alarm", "title": { "en": "In alarm" } }
+  ]
+}

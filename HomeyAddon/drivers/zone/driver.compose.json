@@ -1,0 +1,14 @@
+{
+  "name": { "en": "Alarm zone" },
+  "class": "sensor",
+  "capabilities": ["alarm_contact", "alarm_tamper", "alarm_battery", "paradox_bypassed"],
+  "platforms": ["local"],
+  "images": { "small": "/drivers/zone/assets/images/small.png", "large": "/drivers/zone/assets/images/large.png", "xlarge": "/drivers/zone/assets/images/xlarge.png" },
+  "connectivity": ["lan"],
+  "energy": { "batteries": ["OTHER"] },
+  "pair": [
+    { "id": "bridge" },
+    { "id": "list_devices", "template": "list_devices", "navigation": { "next": "add_devices" } },
+    { "id": "add_devices", "template": "add_devices" }
+  ]
+}
