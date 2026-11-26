@@ -120,7 +120,8 @@ struct SystemStatus {
   uint8_t repeaterSignal[2] = {0, 0};
   uint8_t keypadSignal[8] = {0};
   uint8_t pagesSeen = 0;  // bit n set once status page n has been received
-  bool acFailure() const { return trouble[2] & 0x02; }  // page 0 byte 6 bit 1
+  bool acFailure() const { return trouble[2] & 0x02; }    // page 0 byte 6 bit 1
+  bool batteryLow() const { return trouble[2] & 0x01; }   // page 0 byte 6 bit 0 (no / low battery)
 };
 
 // Snapshot of everything read from the panel's programming, so it can be
@@ -238,7 +239,7 @@ class Panel {
   void handleEeprom(const uint8_t* m);
   void handleEvent(const uint8_t* m);
   void addEvent(const Event& e);
-  void acTransition(bool failed);
+  void troubleTransitions();  // log events for watched trouble bits that changed
   void startSession();
   void sendInit();
   void sendNext();
@@ -257,11 +258,18 @@ class Panel {
   char lastAction_[64] = "";
   bool systemAlarm_ = false;
   bool stopped_ = false;  // disconnected by the user
-  // AC failure tracking: the bridge logs its own event when the status bit changes,
-  // unless the panel sent its own live event (group 44/45 sub 1) around the same time.
-  bool acKnown_ = false, acFailed_ = false;
-  uint32_t acRealEventMs_ = 0, acOwnEventMs_ = 0;
-  uint8_t acRealGroup_ = 0, acOwnGroup_ = 0;
+  // Watched troubles (AC failure, low battery): the bridge logs its own event when
+  // the status bit changes, unless the panel sent its own live event (group 44/45,
+  // same sub-group) around the same time - and drops the panel's copy if it logged first.
+  struct TroubleWatch {
+    explicit TroubleWatch(uint8_t s) : sub(s) {}
+    uint8_t sub;  // trouble sub-group in events 44 / 45
+    bool known = false, active = false;
+    uint32_t realMs = 0, ownMs = 0;
+    uint8_t realGroup = 0, ownGroup = 0;
+  };
+  TroubleWatch watches_[2] = {TroubleWatch(1), TroubleWatch(2)};  // 1 = AC failure, 2 = battery failure
+  bool watchActive(int i) const { return i == 0 ? sys_.acFailure() : sys_.batteryLow(); }
 
   uint8_t rx_[kMsgLen];
   size_t rxLen_ = 0;

@@ -19,7 +19,7 @@ char status[48] = "disabled";
 char lastActionSeen[64] = "";
 
 // Hash of the last published payload per topic slot, to publish only on change.
-enum Slot { kLink, kAlarm, kTroubles, kInfo, kAcPower, kAreaBase };
+enum Slot { kLink, kAlarm, kTroubles, kInfo, kAcPower, kBatteryLow, kAreaBase };
 constexpr int kAreaSlots = 6;  // state, homekit, target, ready, json, ha
 constexpr int kZoneBase = kAreaBase + paradox::kPartitions * kAreaSlots;
 constexpr int kDiscBase = kZoneBase + paradox::kZones * 2;  // zone: open, json
@@ -29,7 +29,8 @@ constexpr int kDiscZone = kDiscArea + paradox::kPartitions;
 constexpr int kDiscLink = kDiscZone + paradox::kZones;
 constexpr int kDiscTroubles = kDiscLink + 1;
 constexpr int kDiscAc = kDiscTroubles + 1;
-constexpr int kSlots = kDiscAc + 1;
+constexpr int kDiscBattery = kDiscAc + 1;
+constexpr int kSlots = kDiscBattery + 1;
 uint32_t lastHash[kSlots];
 bool zoneWasPublished[paradox::kZones];
 
@@ -212,6 +213,18 @@ void publishDiscovery(bool zonesKnown) {
     addDevice(d);
     publishDiscovery(kDiscAc, discTopic("binary_sensor", "ac_power"), &d);
   }
+  {
+    JsonDocument d;
+    d["name"] = "Panel battery";
+    d["unique_id"] = id + "_battery_low";
+    d["object_id"] = "paradox_battery_low";
+    d["state_topic"] = topic("panel/battery_low");
+    d["payload_on"] = "true";   // low / missing
+    d["payload_off"] = "false"; // OK
+    d["device_class"] = "battery";
+    addDevice(d);
+    publishDiscovery(kDiscBattery, discTopic("binary_sensor", "battery_low"), &d);
+  }
 }
 
 const char* homekitTarget(const paradox::Partition& a) {
@@ -266,6 +279,8 @@ void publishState() {
   }
   // true = mains (AC) power present, false = AC failure trouble
   publishSlot(kAcPower, topic("panel/ac_power"), p.system().acFailure() ? "false" : "true");
+  // true = panel battery low / missing
+  publishSlot(kBatteryLow, topic("panel/battery_low"), p.system().batteryLow() ? "true" : "false");
 
   for (int i = 0; i < paradox::kPartitions; i++) {
     if (!partitionInUse(i)) continue;

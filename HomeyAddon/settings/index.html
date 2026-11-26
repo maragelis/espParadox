@@ -55,6 +55,7 @@
         <li><b>Alarm notification:</b> WHEN <i>Alarm turned on</i> (area) → THEN send a push notification / turn on lights.</li>
         <li><b>Door left open:</b> WHEN a contact zone opens AND the area is armed → THEN notify.</li>
         <li><b>Power cut:</b> WHEN <i>Paradox panel lost AC power</i> → THEN notify.</li>
+        <li><b>Battery:</b> WHEN <i>Paradox panel battery became low</i> → THEN remind me to replace it.</li>
         <li><b>Anything else:</b> WHEN <i>A Paradox panel event was received</i> gives the event text, group, area and time.</li>
       </ul>
       <p>Use <i>Set alarm mode … as [who]</i> with the <b>Name</b> tag so the timeline shows the person. Homey doesn't tell apps who tapped a tile, so taps show as "by Homey".</p>
@@ -62,7 +63,7 @@
 
     <details>
       <summary>5. Timeline</summary>
-      <p>Every arm, disarm, alarm and AC power change is added to the Homey timeline with who did it: the panel user's name (keypad / remote), keyswitch, auto-arm, Homey, or the bridge's web page / MQTT. Panel user names come from the panel's user labels. Switch it off below under <b>Timeline</b>.</p>
+      <p>Every arm, disarm, alarm, AC power and panel battery change is added to the Homey timeline with who did it: the panel user's name (keypad / remote), keyswitch, auto-arm, Homey, or the bridge's web page / MQTT. Panel user names come from the panel's user labels. Switch it off below under <b>Timeline</b>.</p>
     </details>
 
     <details>

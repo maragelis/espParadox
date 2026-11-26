@@ -271,7 +271,7 @@ void Panel::dropLink(const char* why, uint32_t retryMs) {
   strlcpy(lastError_, why, sizeof lastError_);
   state_ = LinkState::Disconnected;
   pending_ = Pending::None;
-  acKnown_ = false;
+  for (auto& w : watches_) w.known = false;  // fresh baseline after reconnecting
   qCount_ = 0;
   nextAttemptMs_ = millis() + retryMs;
   Serial.printf("[paradox] link down: %s\n", why);
@@ -466,7 +466,7 @@ void Panel::handleStatus(const uint8_t* m) {
       }
       for (int p = 0; p < kPgms; p++) pgms_[p].tamper = testBit(&m[27], p);
       sys_.moduleTamper = m[29] | (m[30] << 8);
-      acTransition(sys_.acFailure());  // after the panel time is parsed
+      troubleTransitions();  // after the panel time is parsed
       break;
     case 1:
       for (int z = 0; z < kZones; z++) {
@@ -612,8 +612,8 @@ void Panel::restore(const PanelConfig& c) {
 }
 
 namespace {
-constexpr uint32_t kAcDedupMs = 60000;
-constexpr uint8_t kGroupNewTrouble = 44, kGroupTroubleRestored = 45, kSubAcFailure = 1;
+constexpr uint32_t kTroubleDedupMs = 60000;
+constexpr uint8_t kGroupNewTrouble = 44, kGroupTroubleRestored = 45;
 }  // namespace
 
 void Panel::handleEvent(const uint8_t* m) {
@@ -628,11 +628,14 @@ void Panel::handleEvent(const uint8_t* m) {
   e.sub = m[8];
   e.partition = m[9];
   memcpy(e.serial, &m[10], 4);
-  if ((e.group == kGroupNewTrouble || e.group == kGroupTroubleRestored) && e.sub == kSubAcFailure) {
-    // The bridge already logged this AC change from the status bit: don't log it twice.
-    if (e.group == acOwnGroup_ && millis() - acOwnEventMs_ < kAcDedupMs) return;
-    acRealGroup_ = e.group;
-    acRealEventMs_ = millis();
+  if (e.group == kGroupNewTrouble || e.group == kGroupTroubleRestored) {
+    for (auto& w : watches_) {
+      if (e.sub != w.sub) continue;
+      // The bridge already logged this change from the status bit: don't log it twice.
+      if (e.group == w.ownGroup && millis() - w.ownMs < kTroubleDedupMs) return;
+      w.realGroup = e.group;
+      w.realMs = millis();
+    }
   }
   addEvent(e);
 }
@@ -644,32 +647,36 @@ void Panel::addEvent(const Event& e) {
   if (onEvent) onEvent(e);
 }
 
-// AC failure status bit (status page 0) changed: log "New trouble: AC failure" /
-// "Trouble restored: AC failure" with the panel's own event codes.
-void Panel::acTransition(bool failed) {
-  if (!acKnown_) {  // first status after connecting: just remember it
-    acKnown_ = true;
-    acFailed_ = failed;
-    return;
+// A watched trouble bit (status page 0) changed: log "New trouble: <x>" /
+// "Trouble restored: <x>" with the panel's own event codes.
+void Panel::troubleTransitions() {
+  for (int i = 0; i < 2; i++) {
+    TroubleWatch& w = watches_[i];
+    bool active = watchActive(i);
+    if (!w.known) {  // first status after connecting: just remember it
+      w.known = true;
+      w.active = active;
+      continue;
+    }
+    if (active == w.active) continue;
+    w.active = active;
+    uint8_t group = active ? kGroupNewTrouble : kGroupTroubleRestored;
+    Serial.printf("[paradox] %s %s\n", w.sub == 1 ? "AC power" : "Battery", active ? "trouble" : "restored");
+    if (group == w.realGroup && millis() - w.realMs < kTroubleDedupMs) continue;  // panel already told us
+    Event e = {};
+    e.uptimeMs = millis();
+    e.year = sys_.year;
+    e.month = sys_.month;
+    e.day = sys_.day;
+    e.hour = sys_.hour;
+    e.minute = sys_.minute;
+    e.group = group;
+    e.sub = w.sub;
+    e.partition = 0;
+    w.ownGroup = group;
+    w.ownMs = millis();
+    addEvent(e);
   }
-  if (failed == acFailed_) return;
-  acFailed_ = failed;
-  uint8_t group = failed ? kGroupNewTrouble : kGroupTroubleRestored;
-  Serial.printf("[paradox] AC power %s\n", failed ? "FAILED" : "restored");
-  if (group == acRealGroup_ && millis() - acRealEventMs_ < kAcDedupMs) return;  // panel already told us
-  Event e = {};
-  e.uptimeMs = millis();
-  e.year = sys_.year;
-  e.month = sys_.month;
-  e.day = sys_.day;
-  e.hour = sys_.hour;
-  e.minute = sys_.minute;
-  e.group = group;
-  e.sub = kSubAcFailure;
-  e.partition = 0;
-  acOwnGroup_ = group;
-  acOwnEventMs_ = millis();
-  addEvent(e);
 }
 
 }  // namespace paradox

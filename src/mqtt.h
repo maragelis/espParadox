@@ -8,6 +8,7 @@
 //   <base>/panel/alarm               true | false (system in alarm)
 //   <base>/troubles                  JSON array of active troubles
 //   <base>/panel/ac_power            true (AC present) | false (AC failure)
+//   <base>/panel/battery_low         true (battery low / missing) | false
 //   <base>/area/<n>/state            disarmed | stay | sleep | full | alarm
 //   <base>/area/<n>/homekit          D | SA | NA | AA | T   (current state, mqttthing defaults)
 //   <base>/area/<n>/homekit/target   D | SA | NA | AA       (target state)

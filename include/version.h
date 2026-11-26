@@ -21,4 +21,5 @@
 //   1.7.0  Read user labels (read-only); events name the user ("Armed by Maria"), JSON 'user'
 //   1.7.1  Retry config EEPROM reads (lost answers) instead of skipping the block
 //   1.8.0  AC failure: event on change, acFailure in status, MQTT panel/ac_power, HA sensor
-#define FW_VERSION "1.8.0"
+//   1.8.1  Low battery: event on change, batteryLow in status, MQTT panel/battery_low, HA sensor
+#define FW_VERSION "1.8.1"

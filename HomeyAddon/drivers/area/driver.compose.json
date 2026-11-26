@@ -1,7 +1,7 @@
 {
   "name": { "en": "Alarm area" },
   "class": "homealarm",
-  "capabilities": ["homealarm_state", "paradox_area_mode", "alarm_generic", "paradox_ready", "paradox_ac_failure"],
+  "capabilities": ["homealarm_state", "paradox_area_mode", "alarm_generic", "paradox_ready", "paradox_ac_failure", "paradox_battery_low"],
   "capabilitiesOptions": {
     "alarm_generic": { "title": { "en": "Alarm" } }
   },

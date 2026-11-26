@@ -17,6 +17,7 @@ class AreaDevice extends BridgeDevice {
   async onInit() {
     this.area = this.getData().area;
     if (!this.hasCapability('paradox_ac_failure')) await this.addCapability('paradox_ac_failure'); // devices paired before 1.4.0
+    if (!this.hasCapability('paradox_battery_low')) await this.addCapability('paradox_battery_low'); // before 1.5.0
     this.lastMode = null;
 
     // Homey's standard alarm control: armed / partially_armed / disarmed.
@@ -78,6 +79,7 @@ class AreaDevice extends BridgeDevice {
     await this.updateCapability('alarm_generic', Boolean(p.alarm));
     await this.updateCapability('paradox_ready', Boolean(p.ready));
     await this.updateCapability('paradox_ac_failure', Boolean(status.panel && status.panel.acFailure));
+    await this.updateCapability('paradox_battery_low', Boolean(status.panel && status.panel.batteryLow));
 
     // Track the real panel mode separately from the capability, which Homey sets
     // optimistically when the user picks a mode.

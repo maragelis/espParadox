@@ -369,6 +369,7 @@ void buildStatusJson(String& out) {
   pi["batteryLevel"] = s.batteryLevel;
   pi["rfNoise"] = s.rfNoise;
   pi["acFailure"] = s.acFailure();
+  pi["batteryLow"] = s.batteryLow();
   pi["moduleTamper"] = s.moduleTamper;
   pi["moduleSupervision"] = s.moduleSupervision;
 

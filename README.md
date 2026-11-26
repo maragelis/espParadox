@@ -65,6 +65,7 @@ when they change; live panel events are pushed as they happen.
 | `paradox/zone/3/open` | `true` / `false` (enabled zones only) |
 | `paradox/zone/3/json` | name, open, alarm, bypassed, tamper, low battery, signal… |
 | `paradox/panel/ac_power` | `true` (AC present) / `false` (AC failure) |
+| `paradox/panel/battery_low` | `true` (battery low / missing) / `false` |
 | `paradox/troubles`, `paradox/info`, `paradox/panel/link` | JSON / text |
 | `paradox/event` | JSON per live event (not retained) |
 | `paradox/action/result` | result of the last command |

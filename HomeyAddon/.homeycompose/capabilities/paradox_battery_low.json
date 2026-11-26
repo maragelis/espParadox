@@ -1,0 +1,11 @@
+{
+  "type": "boolean",
+  "title": { "en": "Panel battery low" },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true,
+  "insightsTitleTrue": { "en": "Panel battery low / missing" },
+  "insightsTitleFalse": { "en": "Panel battery OK" },
+  "icon": "/assets/battery.svg"
+}

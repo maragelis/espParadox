@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.espparadox.bridge",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "compatibility": ">=5.0.0",
   "sdk": 3,
   "platforms": [
@@ -52,6 +52,21 @@
           "en": "Paradox panel AC power restored"
         },
         "id": "ac_restored"
+      },
+      {
+        "title": {
+          "en": "Paradox panel battery became low"
+        },
+        "hint": {
+          "en": "The panel reports a no / low battery trouble."
+        },
+        "id": "battery_low"
+      },
+      {
+        "title": {
+          "en": "Paradox panel battery is OK again"
+        },
+        "id": "battery_ok"
       },
       {
         "title": {
@@ -140,6 +155,12 @@
           "en": "Paradox panel AC power !{{is|is not}} OK"
         },
         "id": "ac_ok"
+      },
+      {
+        "title": {
+          "en": "Paradox panel battery !{{is|is not}} OK"
+        },
+        "id": "battery_ok"
       },
       {
         "id": "area_mode_is",
@@ -427,7 +448,8 @@
         "paradox_area_mode",
         "alarm_generic",
         "paradox_ready",
-        "paradox_ac_failure"
+        "paradox_ac_failure",
+        "paradox_battery_low"
       ],
       "capabilitiesOptions": {
         "alarm_generic": {
@@ -608,6 +630,23 @@
           }
         }
       ]
+    },
+    "paradox_battery_low": {
+      "type": "boolean",
+      "title": {
+        "en": "Panel battery low"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "insightsTitleTrue": {
+        "en": "Panel battery low / missing"
+      },
+      "insightsTitleFalse": {
+        "en": "Panel battery OK"
+      },
+      "icon": "/assets/battery.svg"
     },
     "paradox_bypassed": {
       "type": "boolean",

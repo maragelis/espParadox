@@ -74,7 +74,7 @@ function render(s){
     el('button',{class:'danger',onclick:()=>act('disarm',n,'Disarm '+p.label+'?')},'Disarm')))}));
  const pi=s.panel;$('panel').replaceChildren(...[
   ['Model',pi.detected?pi.model+' (0x'+pi.productId.toString(16)+')':'not detected'],['Firmware',pi.firmware],['Panel ID',pi.panelId],['Panel time',pi.time],
-  ['AC power',pi.acFailure?'FAILURE':'OK'],['AC / DC / battery (raw)',pi.acLevel+' / '+pi.dcLevel+' / '+pi.batteryLevel],['RF noise floor',pi.rfNoise],
+  ['AC power',pi.acFailure?'FAILURE':'OK'],['Battery',pi.batteryLow?'LOW / MISSING':'OK'],['AC / DC / battery (raw)',pi.acLevel+' / '+pi.dcLevel+' / '+pi.batteryLevel],['RF noise floor',pi.rfNoise],
   ['Frames rx / tx / bad (last '+Math.floor(s.link.countersAge/60)+' of 10 min)',s.link.framesRx+' / '+s.link.framesTx+' / '+s.link.checksumErrors],['Last action',s.link.lastAction||'—'],['MQTT',s.mqtt],['Firmware (bridge)','v'+s.version],
   ['Uptime',Math.floor(s.uptime/60)+' min']].flatMap(([k,v])=>[el('dt',{},k),el('dd',{},String(v))]));
  $('troubles').replaceChildren(...(s.troubles.length?s.troubles.map(t=>pill(t,'warn')):[document.createTextNode('No troubles')]));

@@ -46,12 +46,26 @@ class ParadoxBridgeApp extends Homey.App {
         time: e.time || '',
       }).catch(this.error);
     });
-    // AC (mains) power of the panel: flow triggers + timeline on change.
-    this.acFailure = null; // unknown until the first complete status
-    this.acLostTrigger = this.homey.flow.getTriggerCard('ac_lost');
-    this.acRestoredTrigger = this.homey.flow.getTriggerCard('ac_restored');
-    this.homey.flow.getConditionCard('ac_ok').registerRunListener(async () => this.acFailure === false);
-    this.client.on('status', (status) => this._checkAc(status));
+    // Panel troubles watched for flows + timeline: AC (mains) power and battery.
+    this.troubles = {
+      ac: {
+        field: 'acFailure', value: null,
+        on: this.homey.flow.getTriggerCard('ac_lost'),
+        off: this.homey.flow.getTriggerCard('ac_restored'),
+        onText: '**Paradox panel**: AC power lost - running on battery',
+        offText: '**Paradox panel**: AC power restored',
+      },
+      battery: {
+        field: 'batteryLow', value: null,
+        on: this.homey.flow.getTriggerCard('battery_low'),
+        off: this.homey.flow.getTriggerCard('battery_ok'),
+        onText: '**Paradox panel**: battery low or missing',
+        offText: '**Paradox panel**: battery OK again',
+      },
+    };
+    this.homey.flow.getConditionCard('ac_ok').registerRunListener(async () => this.troubles.ac.value === false);
+    this.homey.flow.getConditionCard('battery_ok').registerRunListener(async () => this.troubles.battery.value === false);
+    this.client.on('status', (status) => this._checkTroubles(status));
 
     this.client.on('unavailable', (err) => this.log(`Bridge unreachable: ${err.message}`));
     this.client.on('available', () => this.log(`Bridge reachable at ${this.client.host}`));
@@ -154,17 +168,17 @@ class ParadoxBridgeApp extends Homey.App {
     await this.homey.notifications.createNotification({ excerpt: text });
   }
 
-  _checkAc(status) {
+  _checkTroubles(status) {
     if (!status.link || status.link.state !== 'online' || !status.link.statusComplete || !status.panel) return;
-    const failed = Boolean(status.panel.acFailure);
-    const previous = this.acFailure;
-    this.acFailure = failed;
-    if (previous === null || previous === failed) return; // first reading or no change
-    this.log(`Panel AC power ${failed ? 'lost' : 'restored'}`);
-    (failed ? this.acLostTrigger : this.acRestoredTrigger).trigger().catch(this.error);
-    this.addTimeline(failed
-      ? '**Paradox panel**: AC power lost - running on battery'
-      : '**Paradox panel**: AC power restored').catch(this.error);
+    for (const [name, t] of Object.entries(this.troubles)) {
+      const active = Boolean(status.panel[t.field]);
+      const previous = t.value;
+      t.value = active;
+      if (previous === null || previous === active) continue; // first reading or no change
+      this.log(`Panel ${name} trouble ${active ? 'on' : 'off'}`);
+      (active ? t.on : t.off).trigger().catch(this.error);
+      this.addTimeline(active ? t.onText : t.offText).catch(this.error);
+    }
   }
 
   // ---- mDNS ----------------------------------------------------------------------
