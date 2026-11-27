@@ -30,7 +30,7 @@ th{color:var(--mute);font-weight:600;font-size:12px}td.flags .pill{margin-right:
 </style></head><body>
 <header><h1>Paradox Bridge <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><span id="link" class="pill">…</span><span id="alarm"></span>
 <span class="mute" id="wifi"></span><span style="flex:1"></span>
-<button onclick="post('/api/time')">Sync panel clock</button><button onclick="act('beep')">Beep</button><button id="panelBtn" onclick="panelToggle()">…</button><a href="/settings"><button>Settings</button></a><button class="danger" onclick="if(confirm('Reboot the bridge? The panel connection drops for about 15 seconds.'))post('/api/reboot')">Reboot</button></header>
+<button onclick="post('/api/time')">Sync panel clock</button><button onclick="act('beep')">Beep</button><button id="panelBtn" onclick="panelToggle()">…</button><a href="/manual" target="_blank"><button>Manual</button></a><a href="/settings"><button>Settings</button></a><button class="danger" onclick="if(confirm('Reboot the bridge? The panel connection drops for about 15 seconds.'))post('/api/reboot')">Reboot</button></header>
 <main>
 <div class="card" id="pwWarn" hidden style="border-color:var(--bad)"><b>Security:</b> the bridge still uses the factory password. <a href="/settings#pwBox">Change it in Settings</a>.</div>
 <div class="grid2" id="parts"></div>
@@ -132,7 +132,7 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
 .zdirty td{background:rgba(37,99,235,.08)}
 #msg:empty{display:none}.ver{font-size:12px;font-weight:500;color:var(--mute)}
 </style></head><body>
-<header><h1>Bridge settings <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><a href="/">&larr; Back to panel</a><span style="flex:1"></span><button type="button" class="danger" onclick="if(confirm('Reboot the bridge? Unsaved changes on this page are lost.'))post('/api/reboot')">Reboot</button></header>
+<header><h1>Bridge settings <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><a href="/">&larr; Back to panel</a><a href="/manual" target="_blank">Manual</a><span style="flex:1"></span><button type="button" class="danger" onclick="if(confirm('Reboot the bridge? Unsaved changes on this page are lost.'))post('/api/reboot')">Reboot</button></header>
 <nav class="tabs" id="tabs">
  <button type="button" data-go="network">Network</button>
  <button type="button" data-go="panel">Panel</button>

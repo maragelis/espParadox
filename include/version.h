@@ -37,4 +37,5 @@
 //   1.14.0 Apple HomeKit (HomeSpan): areas as security systems, zones as contact/motion sensors;
 //          Smart home = none / MQTT / HomeKit (one at a time); 1.9 MB app partitions (USB once)
 //   1.14.1 HomeKit off: HomeSpan data (pairings, keys, setup code, WiFi copy) removed at boot
-#define FW_VERSION "1.14.1"
+//   1.15.0 Built-in user manual at /manual (no login needed), linked from the page headers
+#define FW_VERSION "1.15.0"

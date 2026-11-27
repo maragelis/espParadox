@@ -3,6 +3,12 @@
 ESP32 firmware that connects to a Paradox MG/SP panel's serial port
 (protocol: `SPXXXX-Serial-Port-Protocol.doc`, events: `Paradox.pdf` pp. 18-21).
 
+## Manual
+
+The bridge has a built-in user manual at `http://<bridge>/manual` (also the **Manual** button on
+the main page and in Settings). It needs no login, so the recovery steps can be read even with a
+forgotten password. The source is `src/manual_html.h`.
+
 ## Wiring
 
 | Panel serial connector | T-Display |

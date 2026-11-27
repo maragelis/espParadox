@@ -14,6 +14,7 @@
 #include "settings.h"
 #include "version.h"
 #include <Update.h>
+#include "manual_html.h"
 #include "web_ui.h"
 #include "zones.h"
 
@@ -564,6 +565,8 @@ void webBegin(paradox::Panel& p) {
   });
   server.on("/api/action", HTTP_POST, handleAction);
   server.on("/api/time", HTTP_POST, handleTime);
+  // The manual needs no login: it holds no settings, and it explains how to recover a forgotten password.
+  server.on("/manual", HTTP_GET, [] { server.send_P(200, "text/html", kManualHtml); });
   server.on("/settings", HTTP_GET, [] {
     if (!auth()) return;
     server.send_P(200, "text/html", kSettingsHtml);
