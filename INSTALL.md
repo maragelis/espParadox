@@ -42,6 +42,11 @@ You also need the panel's **PC password** (section **[911]**, factory `0000`) **
 
 ## 2. Install the tools
 
+> **Easiest: the web installer.** Open **https://maragelis.github.io/espParadox/** in **Chrome or
+> Edge** on a computer. Plug in the board, choose it and press **Install**. That's all: no tools,
+> no code. Then continue with [step 5](#5-first-set-up-wifi-and-password).
+> Steps 2–4 below are only needed if you want to build the firmware yourself.
+
 The firmware is built with **PlatformIO**. Pick one of these:
 
 - **VS Code (easiest):** install [Visual Studio Code](https://code.visualstudio.com/), then the

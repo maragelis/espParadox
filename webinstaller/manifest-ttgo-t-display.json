@@ -1,0 +1,16 @@
+{
+  "name": "Paradox SP/MG Bridge (TTGO T-Display)",
+  "version": "@VERSION@",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "ttgo-t-display/bootloader.bin", "offset": 4096 },
+        { "path": "ttgo-t-display/partitions.bin", "offset": 32768 },
+        { "path": "ttgo-t-display/boot_app0.bin", "offset": 57344 },
+        { "path": "ttgo-t-display/firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

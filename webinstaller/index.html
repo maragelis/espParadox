@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paradox SP/MG Bridge – web installer</title>
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mute:#5d6675;--line:#dde1e7;--accent:#b71c1c;--warn:#8a5a00;--warnbg:#fff6e0}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--fg:#e8ebf0;--mute:#9aa3b2;--line:#2e343d;--accent:#ef5350;--warn:#ffcc66;--warnbg:#2b2416}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+main{max-width:720px;margin:0 auto;padding:32px 20px 48px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:18px;margin:0 0 12px}
+.sub{color:var(--mute);margin:0 0 24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+.boards{display:grid;gap:10px;margin-bottom:18px}
+.boards label{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer}
+.boards label:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.boards input{margin-top:5px;accent-color:var(--accent)}
+.boards b{display:block}
+.boards span{color:var(--mute);font-size:14px}
+esp-web-install-button button[slot=activate]{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 22px;cursor:pointer}
+.ver{color:var(--mute);font-size:14px;margin-top:10px}
+.warn{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:10px 14px;font-size:15px}
+ol{padding-left:22px;margin:0}
+li{margin-bottom:6px}
+code{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:14px}
+a{color:var(--accent)}
+footer{color:var(--mute);font-size:13px;margin-top:24px}
+</style>
+</head>
+<body>
+<main>
+<h1>Paradox SP/MG Bridge</h1>
+<p class="sub">Install the bridge firmware on an ESP32 straight from your browser. No tools to install.</p>
+
+<div class="card">
+  <h2>1. Choose your board</h2>
+  <div class="boards">
+    <label><input type="radio" name="board" value="ttgo-t-display" checked>
+      <div><b>LilyGO TTGO T-Display</b><span>Shows status, zones, events and the HomeKit code on its screen.</span></div></label>
+    <label><input type="radio" name="board" value="esp32-generic">
+      <div><b>Any other ESP32 board</b><span>Same features without a screen (ESP32 with 4 MB flash).</span></div></label>
+  </div>
+
+  <h2>2. Connect and install</h2>
+  <p>Plug the board in with a USB <i>data</i> cable, press <b>Install</b> and pick its port.</p>
+  <esp-web-install-button id="install" manifest="manifest-ttgo-t-display.json">
+    <button slot="activate">Install</button>
+    <div slot="unsupported" class="warn">Your browser can't reach USB devices. Use <b>Chrome</b> or <b>Edge</b> on a computer (not a phone or Safari/Firefox).</div>
+    <div slot="not-allowed" class="warn">The installer needs a secure (https) page. Open it from its GitHub Pages address.</div>
+  </esp-web-install-button>
+  <div class="ver">Firmware version <b>@VERSION@</b></div>
+</div>
+
+<div class="card">
+  <h2>Good to know</h2>
+  <ol>
+    <li><b>Updating an existing bridge?</b> Leave <i>Erase device</i> unticked and your settings are kept. Tick it for a completely fresh start.</li>
+    <li><b>Port not listed?</b> Install the USB driver for the board's chip (<a href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers">CP210x</a> or <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html">CH340/CH9102</a>), then reload this page.</li>
+    <li><b>"Failed to connect"?</b> Hold the board's <b>BOOT</b> button, tap <b>EN/RST</b>, release BOOT, and press Install again.</li>
+    <li><b>After installing:</b> join the WiFi <code>ParadoxBridge</code> (password <code>paradox123</code>), open <code>http://192.168.4.1</code>, log in with <code>admin</code> / <code>changeme</code>, set up your WiFi and <b>change the password</b>.</li>
+    <li><b>Later updates</b> also work over WiFi: download <a id="fwlink" href="ttgo-t-display/firmware.bin">firmware.bin</a> for your board and upload it on the bridge's <i>Settings → System → Firmware update</i>.</li>
+  </ol>
+</div>
+
+<p>Wiring, panel login and smart-home set-up: <a href="https://github.com/maragelis/espParadox/blob/main/INSTALL.md">installation guide</a> · <a href="https://github.com/maragelis/espParadox">source code</a></p>
+<footer>Unofficial community project. Not made, supported or endorsed by Paradox Security Systems.</footer>
+</main>
+<script>
+document.querySelectorAll('input[name=board]').forEach(r => r.addEventListener('change', () => {
+  document.getElementById('install').setAttribute('manifest', 'manifest-' + r.value + '.json');
+  document.getElementById('fwlink').href = r.value + '/firmware.bin';
+}));
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+# Builds both firmware versions and publishes the browser installer (ESP Web Tools)
+# on GitHub Pages: https://maragelis.github.io/espParadox/
+# One-time set-up: repository Settings -> Pages -> Source: "GitHub Actions".
+name: Firmware + web installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        run: pio run -e ttgo-t-display -e esp32-generic
+
+      - name: Assemble installer site
+        run: |
+          VERSION=$(grep -oP '#define FW_VERSION "\K[^"]+' include/version.h)
+          echo "Firmware $VERSION"
+          BOOT_APP0=~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+          mkdir -p site
+          sed "s/@VERSION@/$VERSION/g" webinstaller/index.html > site/index.html
+          for env in ttgo-t-display esp32-generic; do
+            mkdir -p site/$env
+            cp .pio/build/$env/bootloader.bin .pio/build/$env/partitions.bin .pio/build/$env/firmware.bin site/$env/
+            cp $BOOT_APP0 site/$env/
+            sed "s/@VERSION@/$VERSION/g" webinstaller/manifest-$env.json > site/manifest-$env.json
+          done
+          ls -lR site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

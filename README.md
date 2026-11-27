@@ -3,6 +3,8 @@
 ESP32 firmware that connects to a Paradox MG/SP panel's serial port
 (protocol: `SPXXXX-Serial-Port-Protocol.doc`, events: `Paradox.pdf` pp. 18-21).
 
+**Install from your browser:** https://maragelis.github.io/espParadox/ (Chrome/Edge, USB, no tools).
+
 **New here? Start with the step-by-step [installation guide](INSTALL.md).** It covers parts,
 upload, WiFi set-up, wiring, panel login and smart-home connections.
 

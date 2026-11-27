@@ -1,0 +1,16 @@
+{
+  "name": "Paradox SP/MG Bridge (generic ESP32, no display)",
+  "version": "@VERSION@",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "esp32-generic/bootloader.bin", "offset": 4096 },
+        { "path": "esp32-generic/partitions.bin", "offset": 32768 },
+        { "path": "esp32-generic/boot_app0.bin", "offset": 57344 },
+        { "path": "esp32-generic/firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}
