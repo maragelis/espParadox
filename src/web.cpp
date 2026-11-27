@@ -10,6 +10,8 @@
 #include "events.h"
 #include "net.h"
 #include "display.h"
+
+String memBootLog();  // main.cpp: free memory after each start-up step
 #include "homekit.h"
 #include "passthrough.h"
 #include "mqtt.h"
@@ -401,11 +403,60 @@ void handleScan() {
 
 }  // namespace
 
+namespace {
+// Sends JSON to the browser in 1 KB pieces as it is written, so the ~18 KB status text
+// never sits in RAM as one String (that String and its regrowth copies cost ~40 KB).
+class ChunkSender : public Print {
+ public:
+  size_t write(uint8_t c) override {
+    buf_[len_++] = c;
+    if (len_ == sizeof buf_) flush();
+    return 1;
+  }
+  size_t write(const uint8_t* data, size_t n) override {
+    for (size_t i = 0; i < n; i++) write(data[i]);
+    return n;
+  }
+  void flush() override {
+    if (len_) server.sendContent((const char*)buf_, len_);
+    len_ = 0;
+  }
+
+ private:
+  uint8_t buf_[1024];
+  size_t len_ = 0;
+};
+
+void fillStatus(JsonDocument& d);
+}  // namespace
+
 void buildStatusJson(String& out) {
+  JsonDocument d;
+  fillStatus(d);
+  out.reserve(measureJson(d) + 1);  // one allocation, no regrowth copies
+  serializeJson(d, out);
+}
+
+namespace {
+uint32_t statusDocBytes = 0;  // RAM the last status document took (diagnostics)
+
+void sendStatus() {
+  uint32_t before = ESP.getFreeHeap();
+  JsonDocument d;
+  fillStatus(d);
+  uint32_t after = ESP.getFreeHeap();
+  statusDocBytes = before > after ? before - after : 0;
+  server.setContentLength(measureJson(d));
+  server.send(200, "application/json", "");
+  ChunkSender out;
+  serializeJson(d, out);
+  out.flush();
+}
+
+void fillStatus(JsonDocument& d) {
   const auto& p = *panel;
   const auto& s = p.system();
   const auto& info = p.info();
-  JsonDocument d;
   char buf[96];
 
   d["version"] = FW_VERSION;
@@ -439,6 +490,8 @@ void buildStatusJson(String& out) {
     m["heapFree"] = ESP.getFreeHeap();
     m["heapMin"] = ESP.getMinFreeHeap();        // lowest since start
     m["heapMaxBlock"] = ESP.getMaxAllocHeap();  // largest single block
+    m["boot"] = memBootLog();
+    m["statusDoc"] = statusDocBytes;  // RAM used while building the previous /api/status
     m["heapTotal"] = ESP.getHeapSize();
     nvs_stats_t ns;
     if (nvs_get_stats(NULL, &ns) == ESP_OK) {
@@ -595,9 +648,8 @@ void buildStatusJson(String& out) {
       o["userNumber"] = e.sub;
     }
   }
-
-  serializeJson(d, out);
 }
+}  // namespace
 
 void webBegin(paradox::Panel& p) {
   panel = &p;
@@ -607,9 +659,7 @@ void webBegin(paradox::Panel& p) {
   });
   server.on("/api/status", HTTP_GET, [] {
     if (!auth()) return;
-    String s;
-    buildStatusJson(s);
-    server.send(200, "application/json", s);
+    sendStatus();
   });
   server.on("/api/action", HTTP_POST, handleAction);
   server.on("/api/time", HTTP_POST, handleTime);

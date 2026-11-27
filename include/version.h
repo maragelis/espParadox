@@ -52,4 +52,7 @@
 //   1.19.2 Generic factory defaults (no WiFi / MQTT / PC password); T-Display build keeps the display on
 //   1.20.0 Network name = hostname + last IP number (paradox-84.local) so two bridges never clash
 //   1.20.1 MQTT base topic gets the IP number too; network name shown on the main page / display / settings
-#define FW_VERSION "1.20.1"
+//   1.20.2 Boot log: free memory after each start-up step ([mem] lines)
+//   1.20.3 /api/status streamed in 1 KB pieces (was one 18 KB String: ~40 KB RAM peak per request)
+//   1.20.4 Display frame buffer 8-bit (32 KB instead of 65 KB RAM)
+#define FW_VERSION "1.20.4"

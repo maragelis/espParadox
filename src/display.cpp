@@ -272,12 +272,10 @@ void displayBegin() {
   tft.fillScreen(TFT_BLACK);
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, TFT_BACKLIGHT_ON);
-  spr.setColorDepth(16);
+  // 8-bit (256 colours) frame buffer: 32 KB instead of 65 KB at 16-bit. TFT_eSPI converts
+  // the 16-bit colour constants when drawing and back when pushing to the screen.
+  spr.setColorDepth(8);
   haveSprite = spr.createSprite(W, H) != nullptr;
-  if (!haveSprite) {
-    spr.setColorDepth(8);
-    haveSprite = spr.createSprite(W, H) != nullptr;
-  }
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString("Paradox bridge v" FW_VERSION " starting...", 4, 4, 2);
 }

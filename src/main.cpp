@@ -26,6 +26,7 @@
 #include "web.h"
 
 static paradox::Panel panel;
+static void memStep(const char* step);  // boot memory log (below)
 
 // ---------------------------------------------------------------------------
 // WiFi: station mode if configured, with an access point fallback.
@@ -168,6 +169,7 @@ void netLoop() {
     if (!wasConnected) {
       Serial.printf("[wifi] connected, IP %s\n", WiFi.localIP().toString().c_str());
       checkHostOctet();
+      if (millis() < 60000) memStep("wifi connected");
     }
     if (apActive) {
       WiFi.softAPdisconnect(true);
@@ -380,16 +382,33 @@ static void consoleLoop() {
 
 // ---------------------------------------------------------------------------
 
+// Boot memory log: free heap after each start-up step and how much that step took.
+static String bootMem;  // same lines, for /api/status (memory.boot)
+String memBootLog() { return bootMem; }
+
+static void memStep(const char* step) {
+  static uint32_t last = 0;
+  uint32_t now = ESP.getFreeHeap();
+  bootMem += String(step) + ": " + String(now / 1024) + " KB free";
+  if (last) bootMem += " (" + String(((int)now - (int)last) / 1024) + " KB)";
+  bootMem += "\n";
+  if (last) Serial.printf("[mem] %-22s free %6u  (%+d)\n", step, now, (int)(now - last));
+  else Serial.printf("[mem] %-22s free %6u\n", step, now);
+  last = now;
+}
+
 void setup() {
   Serial.begin(115200);
   delay(200);
   Serial.println("\n=== Paradox serial bridge v" FW_VERSION " ===");
 
+  memStep("start");
   settingsLoad();
   pinMode(BUTTON_RESET, INPUT_PULLUP);
   Serial.printf("Board: %s\n", cfg.displayEnabled ? "TTGO T-Display (display on)" : "generic ESP32 (display off)");
 
   displayBegin();  // does nothing when the display is disabled
+  memStep("display");
 
   Serial2.begin(PARADOX_BAUD, SERIAL_8N1, cfg.rxPin, cfg.txPin);
   panel.begin(Serial2);
@@ -401,13 +420,19 @@ void setup() {
                   e.sub, e.partition);
     mqttPublishEvent(e);
   };
+  memStep("panel + zones");
 
   netBegin();
+  memStep("wifi + mdns");
   webBegin(panel);
+  memStep("web server");
   mqttBegin(panel);
+  memStep("mqtt");
   homekitBegin(panel);  // only if chosen in Settings -> Smart home
+  memStep("homekit");
   passthroughBegin(panel, Serial2);  // BabyWare pass-through (off until switched on)
   otaBegin();
+  memStep("babyware + ota");
   Serial.println("Type 'help' for console commands.");
 }
 
