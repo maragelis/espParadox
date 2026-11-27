@@ -13,6 +13,7 @@
 #include "config.h"
 #include "display.h"
 #include "events.h"
+#include "homekit.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "net.h"
@@ -110,9 +111,10 @@ void netLoop() {
       apActive = false;
     }
   } else {
-    // Auto-reconnect doesn't retry after a failed first join, so retry ourselves.
+    // Auto-reconnect doesn't retry after a failed first join, so retry ourselves -
+    // unless HomeKit is on: HomeSpan then does the reconnects (two would collide).
     static uint32_t lastBeginMs = 0;
-    if (millis() - lastBeginMs > 15000 && millis() - lastStaOkMs > 15000) {
+    if (!cfg.homekitEnabled && millis() - lastBeginMs > 15000 && millis() - lastStaOkMs > 15000) {
       lastBeginMs = millis();
       Serial.printf("[wifi] retrying '%s'\n", cfg.wifiSsid.c_str());
       WiFi.disconnect(false, false);
@@ -339,6 +341,7 @@ void setup() {
   netBegin();
   webBegin(panel);
   mqttBegin(panel);
+  homekitBegin(panel);  // only if chosen in Settings -> Smart home
   otaBegin();
   Serial.println("Type 'help' for console commands.");
 }
@@ -367,6 +370,7 @@ void loop() {
   netLoop();
   otaLoop();
   mqttLoop();
+  homekitLoop();
   webLoop();
   consoleLoop();
   displayLoop(panel);

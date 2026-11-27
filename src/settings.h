@@ -35,6 +35,9 @@ struct Settings {
   bool mqttRetainPanel;   // retain panel status + area topics
   bool haDiscovery;       // Home Assistant MQTT discovery
   String haPrefix;        // discovery prefix, normally "homeassistant"
+  // Apple HomeKit (mutually exclusive with MQTT)
+  bool homekitEnabled;
+  String homekitCode;      // 8-digit setup code, generated on first start
   // OTA
   bool otaNetwork;        // ArduinoOTA (PlatformIO network upload)
 };

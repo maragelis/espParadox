@@ -8,6 +8,7 @@
 #include "events.h"
 #include "net.h"
 #include "display.h"
+#include "homekit.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "settings.h"
@@ -115,6 +116,7 @@ void handleGetConfig() {
   d["tz"] = cfg.tz;
   d["displayEnabled"] = cfg.displayEnabled;
   d["mqttEnabled"] = cfg.mqttEnabled;
+  d["integration"] = cfg.homekitEnabled ? "homekit" : cfg.mqttEnabled ? "mqtt" : "none";
   d["mqttHost"] = cfg.mqttHost;
   d["mqttPort"] = cfg.mqttPort;
   d["mqttUser"] = cfg.mqttUser;
@@ -198,7 +200,9 @@ void handleSetConfig() {
   n.ntpServer = arg("ntpServer");
   n.tz = arg("tz");
   n.displayEnabled = server.arg("displayEnabled") == "on";
-  n.mqttEnabled = server.arg("mqttEnabled") == "on";
+  String integ = arg("integration");  // none | mqtt | homekit - only one at a time
+  n.mqttEnabled = integ == "mqtt";
+  n.homekitEnabled = integ == "homekit";
   n.mqttHost = arg("mqttHost");
   n.mqttUser = arg("mqttUser");
   secret("mqttPassword", n.mqttPassword);
@@ -395,6 +399,7 @@ void buildStatusJson(String& out) {
   d["defaultPassword"] = cfg.webPassword == WEB_PASSWORD;  // still the factory password
   d["displayEnabled"] = cfg.displayEnabled;
   d["mqtt"] = mqttStatus();
+  d["homekit"] = homekitInfo().status;
   d["uptime"] = millis() / 1000;
 
   NetInfo n = netInfo();
@@ -567,6 +572,43 @@ void webBegin(paradox::Panel& p) {
   server.on("/api/config", HTTP_POST, handleSetConfig);
   server.on("/api/scan", HTTP_GET, handleScan);
   server.on("/api/zone", HTTP_POST, handleZone);
+  // ---- HomeKit ----
+  server.on("/api/homekit", HTTP_GET, [] {
+    if (!auth()) return;
+    HomekitInfo h = homekitInfo();
+    JsonDocument d;
+    d["enabled"] = h.enabled;
+    d["started"] = h.started;
+    d["paired"] = h.paired;
+    d["controllers"] = h.controllers;
+    d["accessories"] = h.accessories;
+    d["code"] = h.code;
+    d["setupUri"] = h.setupUri;
+    d["host"] = h.host;
+    d["port"] = h.port;
+    d["status"] = h.status;
+    String s;
+    serializeJson(d, s);
+    server.send(200, "application/json", s);
+  });
+  server.on("/api/homekit/qr.svg", HTTP_GET, [] {
+    if (!auth()) return;
+    String svg = homekitQrSvg();
+    if (svg.isEmpty()) return server.send(404, "text/plain", "HomeKit is off");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "image/svg+xml", svg);
+  });
+  server.on("/api/homekit/unpair", HTTP_POST, [] {
+    if (!auth()) return;
+    bool ok = homekitUnpair();
+    reply(ok, ok ? "All HomeKit pairings removed - add the bridge in the Home app again" : "HomeKit is not running");
+  });
+  server.on("/api/homekit/newcode", HTTP_POST, [] {
+    if (!auth()) return;
+    if (!cfg.homekitEnabled) return reply(false, "HomeKit is off");
+    homekitNewCode();
+    reply(true, "New setup code created");
+  });
   server.on("/api/mqtt/republish", HTTP_POST, [] {
     if (!auth()) return;
     if (!cfg.mqttEnabled) return reply(false, "MQTT is disabled");

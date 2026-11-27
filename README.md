@@ -119,6 +119,31 @@ and zone devices and flow cards, talking to the bridge's HTTP API directly (no b
 "When a message is received on topic `paradox/area/1/state`" as a trigger, and "Publish
 `full` to `paradox/area/1/set`" as an action.
 
+## Apple HomeKit (built in)
+
+Go to **Settings → Smart home → Connect with: Apple HomeKit**, then press Save (the bridge
+reboots). HomeKit and MQTT are mutually exclusive, so switching to HomeKit turns MQTT off
+(Home Assistant / Homebridge over MQTT stop). The Homey app keeps working either way.
+
+The Smart home tab then shows the HomeKit status, the **setup QR code** and the **setup code**.
+In the Home app tap **+ → Add Accessory** and scan the code, or tap *More options → Paradox
+Alarm* and type the code. You get:
+
+- one **Security System** per area in use: Home = Stay, Away = Full, Night = Sleep, Off = Disarm,
+  Triggered = alarm.
+- one **Contact** or **Motion** sensor per enabled zone (type from Settings → Zones), with
+  Tampered and Low battery.
+
+The accessory list is built at boot, so after changing zones, reboot the bridge.
+Switching away from HomeKit deletes everything HomeSpan stored on the bridge (pairings, keys,
+setup code, its copy of the WiFi login). Remove *Paradox Alarm* from the Home app too.
+**New setup code** creates a new code. **Remove all pairings** removes the bridge from every
+Home app. HomeKit uses port 1201 (the web page stays on 80) and the HomeSpan library.
+
+**First install of 1.14.0 or later must be over USB:** HomeKit needs larger firmware slots
+(`min_spiffs.csv`, 2 × 1.9 MB), and a partition change can't be done over the air. Settings are
+kept, because their flash area doesn't move. OTA works again afterwards.
+
 ## Static IP
 
 Go to **Settings → WiFi network → IP address**. **Automatic (DHCP)** is the default; **Static**

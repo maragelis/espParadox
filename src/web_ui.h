@@ -137,7 +137,7 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <button type="button" data-go="network">Network</button>
  <button type="button" data-go="panel">Panel</button>
  <button type="button" data-go="zones">Zones</button>
- <button type="button" data-go="mqtt">MQTT</button>
+ <button type="button" data-go="mqtt">Smart home</button>
  <button type="button" data-go="security">Security</button>
  <button type="button" data-go="system">System</button>
  <span style="flex:1"></span>
@@ -172,8 +172,34 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>User<input name="webUser" maxlength="32" required></label>
  <div class="hint">The password is changed in the <b>Change password</b> section below.</div>
 </fieldset>
-<fieldset data-tab="mqtt"><legend>MQTT (Homebridge, Homey, Home Assistant)</legend>
- <label>Enable MQTT<input name="mqttEnabled" type="checkbox"></label>
+<fieldset data-tab="mqtt"><legend>Smart home connection</legend>
+ <label>Connect with<select name="integration">
+  <option value="none">Nothing (web page only)</option>
+  <option value="mqtt">MQTT - Home Assistant, Homebridge, Homey, ...</option>
+  <option value="homekit">Apple HomeKit (built in)</option></select></label>
+ <div class="hint">One at a time. Changing it reboots the bridge. The Homey app works with every choice - it uses the bridge's web API.</div>
+ <div id="hkLeaving" class="hint" hidden style="color:var(--bad);font-weight:600">Leaving HomeKit: on Save the bridge deletes its HomeKit pairings, keys and setup code. Remove "Paradox Alarm" from the Home app too - it would only show "No Response". Turning HomeKit on again later starts fresh with a new setup code.</div>
+</fieldset>
+<fieldset data-tab="mqtt" id="hkBox" hidden><legend>Apple HomeKit</legend>
+ <div id="hkStatus" style="font-weight:600;margin-bottom:8px"></div>
+ <div id="hkPending" class="hint" hidden>Press <b>Save</b> to start HomeKit - the bridge reboots, then the setup code and QR code appear here.</div>
+ <div id="hkLive" hidden>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+   <img id="hkQr" width="164" height="164" alt="HomeKit setup QR code" style="background:#fff;border-radius:8px;border:1px solid var(--line)">
+   <div>
+    <div class="hint">Setup code</div>
+    <div id="hkCode" style="font:600 28px/1.2 ui-monospace,Consolas,monospace;letter-spacing:2px"></div>
+    <dl id="hkInfo" style="display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0 0;font-size:13px"></dl>
+   </div>
+  </div>
+  <div class="hint" style="margin-top:10px">iPhone: <b>Home app</b> &rarr; <b>+</b> &rarr; <b>Add Accessory</b> &rarr; scan the QR code, or tap <i>More options</i> &rarr; <i>Paradox Alarm</i> and type the setup code.
+   You get one alarm (Home = Stay, Away = Full, Night = Sleep) per area and one door / motion sensor per enabled zone.
+   After changing zones on the <b>Zones</b> tab, reboot the bridge so HomeKit gets the new list.</div>
+  <div class="actions" style="margin-top:8px"><button type="button" id="hkNewCode">New setup code</button>
+   <button type="button" class="danger" id="hkUnpair">Remove all pairings</button></div>
+ </div>
+</fieldset>
+<fieldset data-tab="mqtt" id="mqttBox"><legend>MQTT (Home Assistant, Homebridge, Homey)</legend>
  <div class="hint" id="mqttState"></div>
  <label>Broker address<input name="mqttHost" maxlength="64" placeholder="e.g. 192.168.1.10"></label>
  <label>Port<input name="mqttPort" type="number" min="1" max="65535"></label>
@@ -302,7 +328,8 @@ async function load(){
  ipCur=c.current;document.getElementById('ipNow').textContent=c.current.connected?('Now: '+c.current.ip+' / '+c.current.subnet+', gateway '+c.current.gateway+', DNS '+c.current.dns1):'';
  document.getElementById('staticBox').hidden=!c.staticIp;
  f.displayEnabled.checked=c.displayEnabled;pinCfg=c.pins;
- f.mqttEnabled.checked=c.mqttEnabled;f.mqttHost.value=c.mqttHost;f.mqttPort.value=c.mqttPort;f.mqttUser.value=c.mqttUser;
+ f.integration.value=c.integration;integrationBoxes();loadHomekit();
+ f.mqttHost.value=c.mqttHost;f.mqttPort.value=c.mqttPort;f.mqttUser.value=c.mqttUser;
  f.mqttBase.value=c.mqttBase;f.haDiscovery.checked=c.haDiscovery;f.haPrefix.value=c.haPrefix;f.mqttAllowControl.checked=c.mqttAllowControl;f.mqttRetainZones.checked=c.mqttRetainZones;f.mqttRetainPanel.checked=c.mqttRetainPanel;f.otaNetwork.checked=c.otaNetwork;
  f.mqttPassword.placeholder=c.mqttPasswordSet?'•••••• (unchanged)':'none';
  document.getElementById('mqttState').textContent='Status: '+c.mqttStatus;
@@ -316,7 +343,27 @@ async function load(){
 async function post(url,body){
  try{const r=await fetch(url,{method:'POST',body});const j=await r.json();show(j.message,!j.ok);
   if(j.ok&&/Reboot/i.test(j.message))setTimeout(()=>location.reload(),12000)}catch(e){show('Request failed',true)}}
-let pinCfg=null,ipCur=null;
+let pinCfg=null,ipCur=null,integrationSaved=null;
+// ---- smart home: MQTT or HomeKit ----
+function integrationBoxes(){
+ const v=f.integration.value;if(integrationSaved===null)integrationSaved=v;
+ document.getElementById('mqttBox').hidden=v!=='mqtt';
+ document.getElementById('hkBox').hidden=v!=='homekit';
+ document.getElementById('hkPending').hidden=!(v==='homekit'&&integrationSaved!=='homekit');
+ document.getElementById('hkLive').hidden=!(v==='homekit'&&integrationSaved==='homekit');
+ document.getElementById('hkLeaving').hidden=!(integrationSaved==='homekit'&&v!=='homekit');
+}
+async function loadHomekit(){
+ try{const h=await (await fetch('/api/homekit')).json();
+  document.getElementById('hkStatus').textContent='Status: '+h.status+(h.paired?' ('+h.controllers+' controller'+(h.controllers===1?'':'s')+')':'');
+  if(!h.enabled)return;
+  document.getElementById('hkCode').textContent=h.code||'-';
+  document.getElementById('hkQr').src='/api/homekit/qr.svg?'+Date.now();
+  const rows=[['Name','Paradox Alarm'],['Address',h.host+' : '+h.port],['Accessories',h.accessories+' (areas + zones)'],['Paired controllers',String(h.controllers)],['Setup payload',h.setupUri]];
+  document.getElementById('hkInfo').replaceChildren(...rows.flatMap(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.className='hint';dt.textContent=k;dd.style.margin='0';dd.textContent=v;return[dt,dd]}));
+ }catch(e){document.getElementById('hkStatus').textContent='Status: unknown'}
+}
+setInterval(()=>{if(!document.getElementById('hkBox').hidden&&!document.getElementById('hkLive').hidden)loadHomekit()},5000);
 function loginBoxes(){const uc=f.loginMethod.value==='1';document.getElementById('userCodeBox').hidden=!uc;document.getElementById('pcBox').hidden=uc}
 f.loginMethod.onchange=loginBoxes;
 f.ipMode.onchange=()=>{document.getElementById('staticBox').hidden=f.ipMode.value!=='static';
@@ -328,6 +375,13 @@ f.displayEnabled.onchange=()=>{if(!pinCfg)return;const k=f.displayEnabled.checke
  const rx=+f.rxPin.value,tx=+f.txPin.value;opts(f.rxPin,pinCfg[k].rx,rx);opts(f.txPin,pinCfg[k].tx,tx);
  if(!pinCfg[k].rx.includes(rx)||!pinCfg[k].tx.includes(tx))show('A selected pin is used by the display - check the RX/TX pins',true)};
 f.onsubmit=e=>{e.preventDefault();saveAll()};
+f.integration.onchange=integrationBoxes;
+document.getElementById('hkNewCode').onclick=async()=>{
+ if(!confirm('Create a new HomeKit setup code? Devices already paired stay paired.'))return;
+ const j=await api('/api/homekit/newcode',new URLSearchParams());show(j.message,!j.ok);loadHomekit()};
+document.getElementById('hkUnpair').onclick=async()=>{
+ if(!confirm('Remove all HomeKit pairings? The bridge disappears from the Home app until it is added again.'))return;
+ const j=await api('/api/homekit/unpair',new URLSearchParams());show(j.message,!j.ok);loadHomekit()};
 document.getElementById('haPub').onclick=async()=>{
  try{const r=await fetch('/api/mqtt/republish',{method:'POST'});const j=await r.json();show(j.message,!j.ok)}catch(e){show('Request failed',true)}};
 fetch('/api/status').then(r=>r.json()).then(s=>{document.getElementById('pwDefault').hidden=!s.defaultPassword}).catch(()=>{});

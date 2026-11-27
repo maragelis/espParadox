@@ -74,6 +74,9 @@
 #define MQTT_HA_DISCOVERY   1           // publish Home Assistant MQTT discovery configs
 #define MQTT_HA_PREFIX      "homeassistant"
 
+// ---- Apple HomeKit (built in, HomeSpan) - only one of MQTT / HomeKit can be on ----
+#define HOMEKIT_ENABLED     0
+
 // ---- OTA firmware updates --------------------------------------------------
 // Web upload (Settings page) is always available behind the web login.
 // Network upload from PlatformIO (ArduinoOTA, password = web password):

@@ -13,7 +13,7 @@ constexpr const char* kNs = "bridge";
 constexpr const char* kKeys[] = {"wifiSsid", "wifiPass", "apSsid",   "apPass",   "hostname", "webUser",  "webPass",
                                  "rxPin",    "txPin",    "pcPass",   "labels",   "ntp",
                                  "tz",       "display",  "mqttOn",   "mqttHost", "mqttPort", "mqttUser", "mqttPass",
-                                 "mqttBase", "mqttCtl",  "haDisc",   "haPrefix", "otaNet",   "mqttRetZ", "mqttRetP", "staticIp", "ip",       "subnet",   "gateway",  "dns1",     "dns2",     "loginMeth", "userCode"};
+                                 "mqttBase", "mqttCtl",  "haDisc",   "haPrefix", "otaNet",   "mqttRetZ", "mqttRetP", "staticIp", "ip",       "subnet",   "gateway",  "dns1",     "dns2",     "loginMeth", "userCode", "hkOn",     "hkCode"};
 // Usable on any ESP32 board. Excluded: 0/1/3 (boot button, USB serial),
 // 6-11 (flash), 12 (strapping: idle-high panel TX would break boot).
 constexpr uint8_t kOutputPins[] = {2, 13, 15, 17, 21, 22, 25, 26, 27, 32, 33};
@@ -69,6 +69,8 @@ void settingsLoad() {
   cfg.tz = p.getString("tz", TZ_INFO);
   cfg.displayEnabled = p.getBool("display", DISPLAY_ENABLED);
   cfg.mqttEnabled = p.getBool("mqttOn", MQTT_ENABLED);
+  cfg.homekitEnabled = p.getBool("hkOn", HOMEKIT_ENABLED);
+  cfg.homekitCode = p.getString("hkCode", "");
   cfg.mqttHost = p.getString("mqttHost", MQTT_HOST);
   cfg.mqttPort = p.getUShort("mqttPort", MQTT_PORT);
   cfg.mqttUser = p.getString("mqttUser", MQTT_USER);
@@ -126,6 +128,8 @@ void settingsSave() {
   p.putString("tz", cfg.tz);
   p.putBool("display", cfg.displayEnabled);
   p.putBool("mqttOn", cfg.mqttEnabled);
+  p.putBool("hkOn", cfg.homekitEnabled);
+  p.putString("hkCode", cfg.homekitCode);
   p.putString("mqttHost", cfg.mqttHost);
   p.putUShort("mqttPort", cfg.mqttPort);
   p.putString("mqttUser", cfg.mqttUser);
@@ -220,6 +224,8 @@ const char* settingsValidate(const Settings& n) {
   if (n.loginMethod > 1) return "Unknown login method";
   if (n.ntpServer.isEmpty() || n.ntpServer.length() > 64) return "NTP server must be 1-64 characters";
   if (n.tz.isEmpty() || n.tz.length() > 64) return "Time zone must be 1-64 characters";
+  if (n.mqttEnabled && n.homekitEnabled) return "Choose MQTT or HomeKit - not both";
+  if (n.homekitEnabled && n.wifiSsid.isEmpty()) return "HomeKit needs your WiFi network (Network tab)";
   if (n.mqttEnabled && n.mqttHost.isEmpty()) return "MQTT broker address is required";
   if (n.mqttHost.length() > 64) return "MQTT broker address is too long";
   if (n.mqttPort < 1) return "MQTT port must be 1-65535";
@@ -254,6 +260,8 @@ void settingsToJson(JsonObject o) {
   o["tz"] = cfg.tz;
   o["displayEnabled"] = cfg.displayEnabled;
   o["mqttEnabled"] = cfg.mqttEnabled;
+  o["homekitEnabled"] = cfg.homekitEnabled;
+  o["homekitCode"] = cfg.homekitCode;
   o["mqttHost"] = cfg.mqttHost;
   o["mqttPort"] = cfg.mqttPort;
   o["mqttUser"] = cfg.mqttUser;
@@ -301,6 +309,8 @@ void settingsFromJson(JsonObjectConst o, Settings& s) {
   str("tz", s.tz);
   boolean("displayEnabled", s.displayEnabled);
   boolean("mqttEnabled", s.mqttEnabled);
+  boolean("homekitEnabled", s.homekitEnabled);
+  str("homekitCode", s.homekitCode);
   str("mqttHost", s.mqttHost);
   if (o["mqttPort"].is<long>()) s.mqttPort = (uint16_t)constrain(o["mqttPort"].as<long>(), 0L, 65535L);
   str("mqttUser", s.mqttUser);
