@@ -92,7 +92,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <ol>
 <li>Power the bridge. If it doesn't know a WiFi network (or can't join it for 30 seconds) it opens its own WiFi: <b>ParadoxBridge</b> (factory password <code>paradox123</code>).</li>
 <li>Connect to it and open <code>http://192.168.4.1</code>. Log in with <code>admin</code> / <code>changeme</code>.</li>
-<li><i>Settings &rarr; Network</i>: choose your WiFi (<b>Scan</b> lists networks), enter its password, press <b>Save</b>. The bridge reboots and joins your network; the display shows its new address. It's also reachable as <code>http://paradox-<code>http://paradox.local</code>.lt;last number of its IP<code>http://paradox.local</code>.gt;.local</code> (e.g. <code>paradox-84.local</code> at 192.168.2.84), so two bridges on one network never clash.</li>
+<li><i>Settings &rarr; Network</i>: choose your WiFi (<b>Scan</b> lists networks), enter its password, press <b>Save</b>. The bridge reboots and joins your network; the display shows its new address. It's also reachable as <code>http://paradox-&lt;last number of its IP&gt;.local</code> (e.g. <code>paradox-84.local</code> at 192.168.2.84), so two bridges on one network never clash.</li>
 <li><i>Settings &rarr; Security</i>: change the password.</li>
 <li><i>Settings &rarr; Panel</i>: choose the login method (next section) and Save.</li>
 <li><i>System &rarr; Backup</i>: download a backup once everything works.</li>
@@ -213,7 +213,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <h3>Can't find the bridge on the network</h3>
 <ul>
 <li>Look at the display - it shows the current IP address (or the access point).</li>
-<li>Try <code>http://paradox-<code>http://paradox.local</code>lt;last IP number<code>http://paradox.local</code>gt;.local</code> (e.g. <code>paradox-84.local</code>), or your router's list of devices.</li>
+<li>Try <code>http://paradox-&lt;last IP number&gt;.local</code> (e.g. <code>paradox-84.local</code>), or your router's list of devices.</li>
 <li>If it can't join your WiFi for 30 seconds it opens the <b>ParadoxBridge</b> access point; connect and open <code>http://192.168.4.1</code>.</li>
 <li>After a wrong static IP: reset the settings (above) or join the access point.</li>
 </ul></section>
@@ -257,7 +257,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 
 <section id="ref"><h2>17. Addresses and ports</h2>
 <div class="tw"><table>
-<tr><td>Web page / API</td><td><code>http://&lt;bridge IP&gt;</code> or <code>http://paradox-<code>http://paradox.local</code>lt;last IP number<code>http://paradox.local</code>gt;.local</code> (port 80)</td></tr>
+<tr><td>Web page / API</td><td><code>http://&lt;bridge IP&gt;</code> or <code>http://paradox-&lt;last IP number&gt;.local</code> (port 80)</td></tr>
 <tr><td>This manual</td><td><code>/manual</code> - no login needed</td></tr>
 <tr><td>Access point</td><td><code>ParadoxBridge</code>, <code>http://192.168.4.1</code></td></tr>
 <tr><td>HomeKit</td><td>port 1201</td></tr>

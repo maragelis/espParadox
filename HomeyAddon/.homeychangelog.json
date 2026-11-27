@@ -31,5 +31,8 @@
   },
   "1.6.1": {
     "en": "Timeline: changes made from Homey show 'by Homey' (or the name from the 'as [who]' card) also when the bridge logs in with a user code."
+  },
+  "1.6.2": {
+    "en": "Store description: current bridge firmware and unofficial-app note. Works with bridge names that include the IP number (paradox-84.local)."
   }
 }

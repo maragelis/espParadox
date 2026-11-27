@@ -3,6 +3,9 @@
 ESP32 firmware that connects to a Paradox MG/SP panel's serial port
 (protocol: `SPXXXX-Serial-Port-Protocol.doc`, events: `Paradox.pdf` pp. 18-21).
 
+**New here? Start with the step-by-step [installation guide](INSTALL.md).** It covers parts,
+upload, WiFi set-up, wiring, panel login and smart-home connections.
+
 ## Manual
 
 The bridge has a built-in user manual at `http://<bridge>/manual` (also the **Manual** button on

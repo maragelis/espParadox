@@ -14,4 +14,6 @@ Setup: open the app settings (Apps > Paradox SP/MG Bridge > Configure) and enter
 
 The panel's own programming is never changed. Arming and disarming use the panel's normal commands.
 
-Requires the ESP32 Paradox serial bridge (espParadox), firmware 1.6 or later (1.6.9 or later for automatic discovery).
+Requires the ESP32 Paradox serial bridge (espParadox), firmware 1.6 or later (1.6.9 or later for automatic discovery; 1.20 or later recommended).
+
+This is an unofficial, community app. It is not made, supported or endorsed by Paradox Security Systems.

@@ -3,3 +3,12 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Paradox documents (copyright Paradox) and local backups: never commit
+*.pdf
+*.doc
+backup/
+# Homey build output
+HomeyAddon/.homeybuild/
+HomeyAddon/node_modules/
+HomeyAddon/env.json

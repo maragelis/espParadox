@@ -55,4 +55,5 @@
 //   1.20.2 Boot log: free memory after each start-up step ([mem] lines)
 //   1.20.3 /api/status streamed in 1 KB pieces (was one 18 KB String: ~40 KB RAM peak per request)
 //   1.20.4 Display frame buffer 8-bit (32 KB instead of 65 KB RAM)
-#define FW_VERSION "1.20.4"
+//   1.20.5 Manual: fixed garbled bridge address lines
+#define FW_VERSION "1.20.5"
