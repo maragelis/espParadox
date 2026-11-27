@@ -121,8 +121,8 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 
 <section id="display"><h2>7. Display and buttons (T-Display)</h2>
 <ul>
-<li><b>Right button:</b> next page - connection (WiFi, IP, panel, areas), zone grid, recent events.</li>
-<li><b>Left button (BOOT):</b> short press = backlight on/off. <b>Hold 5 seconds = reset all settings</b> (see <a href="#recovery">recovery</a>).</li>
+<li><b>Right button:</b> next page - connection (WiFi, IP, panel, areas), zone grid, recent events, and while HomeKit is on a HomeKit page with the setup QR code and code (scan it with the iPhone camera).</li>
+<li><b>Left button (BOOT):</b> short press = backlight on/off. <b>Reset all settings: only at start-up</b> - press within 5 s of power-on and hold 10 s; pressing later never resets (see <a href="#recovery">recovery</a>).</li>
 <li>Header colours: green = panel online, orange = connecting, dark red = disconnected, flashing red = <b>alarm</b>.</li>
 <li>Other ESP32 boards: untick <i>System &rarr; Board &rarr; TTGO T-Display screen</i>; the BOOT-button reset still works.</li>
 </ul></section>
@@ -204,7 +204,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <section id="recovery"><h2>13. Forgot the password / can't reach the bridge</h2>
 <h3>Reset the settings</h3>
 <ol>
-<li><b>Hold the BOOT button (left button on the T-Display) for 5 seconds</b> while the bridge runs - or type <code>config reset</code> on the USB console.</li>
+<li>Unplug and re-plug the power (or press RST / EN), then <b>within 5 seconds press the BOOT button (left button on the T-Display) and hold it for 10 seconds</b>. The display counts down; releasing early cancels. Don't hold it <i>while</i> plugging in - the ESP32 would start in flashing mode (just re-plug). Or type <code>config reset</code> on the USB console.</li>
 <li>The bridge restarts with the factory defaults: login <b>admin / changeme</b>, WiFi from the firmware defaults (otherwise the <b>ParadoxBridge</b> access point at <code>192.168.4.1</code>).</li>
 <li>Log in, then <b>restore your backup</b> (System &rarr; Backup) - or enter the settings again.</li>
 <li>Update the password in the Homey app settings.</li>

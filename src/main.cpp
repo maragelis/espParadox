@@ -348,21 +348,37 @@ void setup() {
   Serial.println("Type 'help' for console commands.");
 }
 
-// Recovery on any ESP32 board: hold BOOT (GPIO0) for 5 s while running to
-// erase saved settings and reboot with the config.h defaults.
+// Recovery on any ESP32 board: press BOOT (GPIO0) within 5 s after power-on / restart
+// and hold it for 10 s to erase saved settings and reboot with the config.h defaults.
+// A press later during normal operation never resets.
 static void resetButtonLoop() {
   static uint32_t downSince = 0;
+  static uint32_t lastShown = 0;
   if (digitalRead(BUTTON_RESET) == LOW) {
-    if (!downSince) downSince = millis() | 1;
-    if (millis() - downSince >= RESET_HOLD_MS) {
+    if (!downSince) {
+      if (millis() > RESET_WINDOW_MS) return;  // not at start-up: ignore
+      downSince = millis() | 1;
+      Serial.println("[settings] reset button held at start-up - keep holding 10 s to erase settings");
+    }
+    uint32_t held = millis() - downSince;
+    if (held / 1000 != lastShown) {
+      lastShown = held / 1000;
+      char msg[40];
+      snprintf(msg, sizeof msg, "Hold for reset: %lu s", (unsigned long)((RESET_HOLD_MS - held + 999) / 1000));
+      displayMessage(msg);
+    }
+    if (held >= RESET_HOLD_MS) {
       Serial.println("[settings] reset button held - erasing settings and rebooting");
       settingsReset();
       displayMessage("Settings reset - rebooting");
       delay(1500);
       ESP.restart();
     }
-  } else {
+  } else if (downSince) {
     downSince = 0;
+    lastShown = 0;
+    Serial.println("[settings] reset cancelled (button released)");
+    displayMessage("Reset cancelled");
   }
 }
 

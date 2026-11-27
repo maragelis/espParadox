@@ -5,6 +5,7 @@
 //   Page 1: WiFi + panel connection info and partition state
 //   Page 2: zone grid
 //   Page 3: recent events
+//   Page 4: HomeKit setup QR code + code (only while HomeKit is enabled)
 // BUTTON_PAGE cycles pages, BUTTON_BACKLIGHT toggles the backlight.
 void displayBegin();
 void displayLoop(const paradox::Panel& panel);

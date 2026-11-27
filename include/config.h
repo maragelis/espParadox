@@ -62,8 +62,8 @@
 #define TZ_INFO     "EET-2EEST,M3.5.0/3,M10.5.0/4"   // Greece / Eastern Europe
 
 // ---- MQTT (Homebridge mqttthing, Homey MQTT Client, ...) --------------------
-#define MQTT_ENABLED        1
-#define MQTT_HOST           "192.168.2.230"          // broker IP or hostname
+#define MQTT_ENABLED        0
+#define MQTT_HOST           ""          // broker IP or hostname
 #define MQTT_PORT           1883
 #define MQTT_USER           ""
 #define MQTT_PASSWORD       ""
@@ -91,14 +91,17 @@
 // is never initialised and its pins are left alone. Also changeable on the
 // Settings page.
 #ifndef DISPLAY_ENABLED   // the esp32-generic build sets it to 0 (platformio.ini)
-#define DISPLAY_ENABLED   1
+#define DISPLAY_ENABLED   0
 #endif
 
 // T-Display buttons (only used when the display is enabled)
 #define BUTTON_PAGE       35   // next display page
 #define BUTTON_BACKLIGHT  0    // backlight on/off
 
-// Factory reset: hold this button for 5 s while running. GPIO0 is the BOOT
-// button found on practically every ESP32 board.
+// Factory reset: press this button within RESET_WINDOW_MS after power-on / restart and
+// hold it for RESET_HOLD_MS. Pressing it later does nothing. GPIO0 is the BOOT button
+// found on practically every ESP32 board (it can't be held while power is applied:
+// the ESP32 would start in flashing mode).
 #define BUTTON_RESET      0
-#define RESET_HOLD_MS     5000
+#define RESET_WINDOW_MS   5000
+#define RESET_HOLD_MS     10000

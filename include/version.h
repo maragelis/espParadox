@@ -46,4 +46,8 @@
 //   1.17.0 BabyWare mode: everything except the web page stops; only a reboot restores normal operation
 //   1.17.1 Pass-through diagnostics: first bytes of each direction shown in status / Panel tab
 //   1.18.0 IP150 emulation: BabyWare's "IP150 / Static IP" connection works directly (AES-256, PAI protocol)
-#define FW_VERSION "1.18.0"
+//   1.18.1 main page: BabyWare badge hidden when BabyWare mode is off
+//   1.19.0 Display: HomeKit page with the setup QR code and code (when HomeKit is enabled)
+//   1.19.1 Factory reset button: only at start-up (press within 5 s of power-on, hold 10 s)
+//   1.19.2 Generic factory defaults (no WiFi / MQTT / PC password); T-Display build keeps the display on
+#define FW_VERSION "1.19.2"

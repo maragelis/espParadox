@@ -4,7 +4,9 @@
 
 #include "config.h"
 #include "events.h"
+#include "homekit.h"
 #include "net.h"
+#include "qrgen.h"
 #include "settings.h"
 #include "version.h"
 #include "zones.h"
@@ -12,7 +14,8 @@
 namespace {
 
 constexpr int W = 240, H = 135;
-constexpr int kPages = 3;
+constexpr int kBasePages = 3;  // + a HomeKit page while HomeKit is enabled
+int pageCount() { return kBasePages + (cfg.homekitEnabled ? 1 : 0); }
 constexpr uint32_t kRefreshMs = 250;
 
 TFT_eSPI tft;
@@ -65,7 +68,7 @@ void header(const paradox::Panel& p, const char* title) {
   spr.setTextDatum(MR_DATUM);
   const char* st = alarm ? "ALARM" : paradox::linkStateName(p.state());
   char buf[24];
-  snprintf(buf, sizeof buf, "%s  %d/%d", st, page + 1, kPages);
+  snprintf(buf, sizeof buf, "%s  %d/%d", st, page + 1, pageCount());
   spr.drawString(buf, W - 4, 10);
   spr.setTextDatum(TL_DATUM);
 }
@@ -213,6 +216,47 @@ void drawEvents(const paradox::Panel& p) {
   }
 }
 
+// HomeKit: setup QR code (scan with the iPhone camera / Home app) + the 8-digit code.
+QRCode qr;
+uint8_t qrBuf[106];  // qrcode_getBufferSize(3)
+String qrUri;        // payload the cached QR was made from
+bool qrOk = false;
+
+void drawHomekit(const paradox::Panel& p) {
+  header(p, "HOMEKIT");
+  HomekitInfo hk = homekitInfo();
+  if (hk.setupUri != qrUri) {
+    qrUri = hk.setupUri;
+    qrOk = !qrUri.isEmpty() && qrcode_initText(&qr, qrBuf, 3, ECC_MEDIUM, qrUri.c_str()) == 0;
+  }
+  int tx = 4;
+  if (qrOk) {
+    const int scale = 3, quiet = 2, side = (qr.size + 2 * quiet) * scale;  // 99 px
+    const int x0 = 4, y0 = 22 + (H - 22 - side) / 2;
+    spr.fillRect(x0, y0, side, side, TFT_WHITE);
+    for (int y = 0; y < qr.size; y++)
+      for (int x = 0; x < qr.size; x++)
+        if (qrcode_getModule(&qr, x, y))
+          spr.fillRect(x0 + (x + quiet) * scale, y0 + (y + quiet) * scale, scale, scale, TFT_BLACK);
+    tx = x0 + side + 6;
+  }
+  spr.setTextColor(TFT_SILVER, TFT_BLACK);
+  spr.drawString("Setup code", tx, 26, 2);
+  String code = hk.code.isEmpty() ? String("not set") : hk.code;
+  int font = spr.textWidth(code, 4) <= W - tx - 2 ? 4 : 2;
+  spr.setTextColor(TFT_WHITE, TFT_BLACK);
+  spr.drawString(code, tx, 44, font);
+  uint16_t c = hk.paired ? TFT_GREEN : hk.started ? TFT_CYAN : TFT_ORANGE;
+  spr.setTextColor(c, TFT_BLACK);
+  spr.drawString(hk.status, tx, 76, 2);
+  spr.setTextColor(TFT_SILVER, TFT_BLACK);
+  if (hk.paired) spr.drawString(String(hk.controllers) + " controller(s)", tx, 94, 2);
+  else {
+    spr.drawString("Home app: Add", tx, 94, 2);
+    spr.drawString("Accessory", tx, 110, 2);
+  }
+}
+
 }  // namespace
 
 void displayBegin() {
@@ -277,7 +321,7 @@ void displayFreeze(const char* line1, const char* line2) {
 void displayLoop(const paradox::Panel& panel) {
   if (!active) return;
   if (btnPage.pressed()) {
-    page = (page + 1) % kPages;
+    page = (page + 1) % pageCount();
     lastDraw = 0;
   }
   if (btnLight.pressed()) {
@@ -289,11 +333,13 @@ void displayLoop(const paradox::Panel& panel) {
   if (!haveSprite || millis() - lastDraw < kRefreshMs) return;
   lastDraw = millis();
 
+  if (page >= pageCount()) page = 0;
   spr.fillSprite(TFT_BLACK);
   switch (page) {
     case 0: drawConnection(panel); break;
     case 1: drawZones(panel); break;
     case 2: drawEvents(panel); break;
+    case 3: drawHomekit(panel); break;
   }
   spr.pushSprite(0, 0);
 }

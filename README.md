@@ -40,12 +40,12 @@ screen** off, or set `DISPLAY_ENABLED 0` in `config.h` before the first upload. 
 screen is never initialised and its pins (4, 5, 14, 16, 18, 19, 23, 34, 35) are free for the
 panel UART. Everything else works the same through the web page and the USB console.
 
-**Factory reset (any board):** hold the BOOT button (GPIO0) for 5 seconds while the bridge
-is running. Saved settings are erased and it reboots with the `config.h` defaults.
+**Factory reset (any board):** power the bridge on (or press RST/EN), then within 5 seconds
+press the BOOT button (GPIO0) and hold it for 10 seconds. Pressing it later does nothing. Saved settings are erased and it reboots with the `config.h` defaults.
 
 ## Use
 
-- **Display**: right button (GPIO35) cycles pages: connection → zones → events.
+- **Display**: right button (GPIO35) cycles pages: connection → zones → events (→ HomeKit setup QR code + code while HomeKit is enabled).
   Left button (GPIO0) turns the backlight on or off.
 - **Web UI**: `http://paradox.local/`, the station IP, or `http://192.168.4.1/`
   on the `ParadoxBridge` access point. Arm, disarm, bypass, PGM on/off, beep, and
@@ -158,8 +158,8 @@ Go to **Settings → WiFi network → IP address**. **Automatic (DHCP)** is the 
 lets you enter the IP address, subnet mask, gateway and DNS servers. **Use current values**
 fills them from the address the router gave the bridge. Reserve that address in your router,
 or pick one outside its DHCP range. The fields are checked before saving (valid addresses,
-gateway in the same subnet). If the bridge becomes unreachable after a mistake, hold BOOT for
-5 s to reset the settings, or connect to its `ParadoxBridge` access point.
+gateway in the same subnet). If the bridge becomes unreachable after a mistake, restart it and hold BOOT
+for 10 s within 5 s of start-up to reset the settings, or connect to its `ParadoxBridge` access point.
 
 ## Settings, firmware updates and backups
 

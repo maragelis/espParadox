@@ -18,6 +18,7 @@ header h1{font-size:17px;margin:0}main{padding:16px;max-width:1100px;margin:auto
 .card h2{font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
 .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--line)}
+[hidden]{display:none!important}
 .ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}.info{background:#dbeafe;color:#1e40af}
 button{font:inherit;padding:6px 10px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
 button:hover{border-color:var(--info)}button.danger{border-color:var(--bad);color:var(--bad)}
@@ -168,7 +169,7 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
   <label>DNS server 1<input name="dns1" placeholder="empty = the gateway" inputmode="decimal" autocomplete="off"></label>
   <label>DNS server 2<input name="dns2" placeholder="optional" inputmode="decimal" autocomplete="off"></label>
   <div class="hint">Pick an address outside your router's DHCP range (or reserve it in the router). <button type="button" id="ipCurrent">Use current values</button>
-  <br><span id="ipNow"></span><br>If the bridge becomes unreachable after a wrong address: hold its BOOT button 5 s to reset the settings, or connect to its ParadoxBridge access point.</div>
+  <br><span id="ipNow"></span><br>If the bridge becomes unreachable after a wrong address: restart it, then within 5 s press its BOOT button and hold 10 s to reset the settings, or connect to its ParadoxBridge access point.</div>
  </div>
  <label>Hostname<input name="hostname" maxlength="32" pattern="[A-Za-z0-9-]+" required></label>
  <div class="hint">Reach the bridge at http://&lt;hostname&gt;.local</div>
