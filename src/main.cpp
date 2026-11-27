@@ -7,6 +7,7 @@
 
 #include <Arduino.h>
 #include <ESPmDNS.h>
+#include <Preferences.h>
 #include <WiFi.h>
 #include <time.h>
 
@@ -35,6 +36,73 @@ static constexpr uint32_t kApFallbackMs = 30000;
 
 static bool staConfigured() { return cfg.wifiSsid.length() > 0; }
 
+// Last IP number for the name suffix (0 = unknown yet -> no suffix).
+static uint8_t hostOctet = 0;  // remembered / current IP number
+static uint8_t nameOctet = 0;  // IP number the names in use were made with
+static String hostName;
+
+// base + "-<octet>", unless base already ends with it (e.g. typed as "paradox-84").
+static String addSuffix(const String& base, uint8_t octet) {
+  if (!octet) return base;
+  String sfx = "-" + String(octet);
+  return base.endsWith(sfx) ? base : base + sfx;
+}
+
+static String makeHostname(uint8_t octet) {
+  nameOctet = octet;
+  return addSuffix(cfg.hostname, octet);
+}
+
+String netHostname() { return hostName; }
+String netSuffix() { return nameOctet ? "-" + String(nameOctet) : String(); }
+String netWithSuffix(const String& base) { return addSuffix(base, nameOctet); }
+
+static void loadHostOctet() {
+  IPAddress ip;
+  if (cfg.staticIp && ip.fromString(cfg.ip)) {
+    hostOctet = ip[3];
+  } else {
+    Preferences p;
+    p.begin("net", true);
+    hostOctet = p.getUChar("octet", 0);
+    p.end();
+  }
+  hostName = makeHostname(hostOctet);
+}
+
+static void startMdns() {
+  if (!MDNS.begin(hostName.c_str())) return;
+  MDNS.addService("http", "tcp", 80);
+  // Dedicated service so apps (Homey, ...) can find the bridge: _paradox._tcp
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  mac.toLowerCase();
+  MDNS.addService("paradox", "tcp", 80);
+  MDNS.addServiceTxt("paradox", "tcp", "id", mac);
+  MDNS.addServiceTxt("paradox", "tcp", "version", FW_VERSION);
+  MDNS.addServiceTxt("paradox", "tcp", "api", "/api/status");
+}
+
+// Connected: if the IP's last number differs from the remembered one, save it and rename.
+static void checkHostOctet() {
+  uint8_t octet = WiFi.localIP()[3];
+  if (octet == hostOctet) return;
+  Preferences p;
+  p.begin("net", false);
+  p.putUChar("octet", octet);
+  p.end();
+  hostOctet = octet;
+  if (cfg.homekitEnabled) {  // HomeSpan owns the mDNS services: rename at the next boot
+    Serial.printf("[wifi] network name will be %s.local after the next reboot\n",
+                  addSuffix(cfg.hostname, octet).c_str());
+    return;
+  }
+  hostName = makeHostname(octet);  // also moves the MQTT base topic suffix
+  MDNS.end();
+  startMdns();
+  Serial.printf("[wifi] network name now %s.local\n", hostName.c_str());
+}
+
 // Static IP (Settings -> WiFi): must be set before WiFi.begin(). DHCP otherwise.
 static void applyStaticIp() {
   if (!cfg.staticIp) return;
@@ -62,7 +130,9 @@ static void startAp() {
 }
 
 void netBegin() {
-  WiFi.setHostname(cfg.hostname.c_str());
+  loadHostOctet();
+  WiFi.setHostname(hostName.c_str());
+  Serial.printf("[wifi] network name %s.local\n", hostName.c_str());
   if (staConfigured()) {
     // Log why the station drops / fails to join (reason codes: esp_wifi_types.h,
     // e.g. 2 auth expired, 15 wrong password / handshake timeout, 201 network not found).
@@ -86,17 +156,7 @@ void netBegin() {
   }
   lastStaOkMs = millis();
   configTzTime(cfg.tz.c_str(), cfg.ntpServer.c_str());
-  if (MDNS.begin(cfg.hostname.c_str())) {
-    MDNS.addService("http", "tcp", 80);
-    // Dedicated service so apps (Homey, ...) can find the bridge: _paradox._tcp
-    String mac = WiFi.macAddress();
-    mac.replace(":", "");
-    mac.toLowerCase();
-    MDNS.addService("paradox", "tcp", 80);
-    MDNS.addServiceTxt("paradox", "tcp", "id", mac);
-    MDNS.addServiceTxt("paradox", "tcp", "version", FW_VERSION);
-    MDNS.addServiceTxt("paradox", "tcp", "api", "/api/status");
-  }
+  startMdns();
 }
 
 void netLoop() {
@@ -105,7 +165,10 @@ void netLoop() {
   bool connected = WiFi.status() == WL_CONNECTED;
   if (connected) {
     lastStaOkMs = millis();
-    if (!wasConnected) Serial.printf("[wifi] connected, IP %s\n", WiFi.localIP().toString().c_str());
+    if (!wasConnected) {
+      Serial.printf("[wifi] connected, IP %s\n", WiFi.localIP().toString().c_str());
+      checkHostOctet();
+    }
     if (apActive) {
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);

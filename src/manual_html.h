@@ -92,7 +92,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <ol>
 <li>Power the bridge. If it doesn't know a WiFi network (or can't join it for 30 seconds) it opens its own WiFi: <b>ParadoxBridge</b> (factory password <code>paradox123</code>).</li>
 <li>Connect to it and open <code>http://192.168.4.1</code>. Log in with <code>admin</code> / <code>changeme</code>.</li>
-<li><i>Settings &rarr; Network</i>: choose your WiFi (<b>Scan</b> lists networks), enter its password, press <b>Save</b>. The bridge reboots and joins your network; the display shows its new address. It's also reachable as <code>http://paradox.local</code>.</li>
+<li><i>Settings &rarr; Network</i>: choose your WiFi (<b>Scan</b> lists networks), enter its password, press <b>Save</b>. The bridge reboots and joins your network; the display shows its new address. It's also reachable as <code>http://paradox-<code>http://paradox.local</code>.lt;last number of its IP<code>http://paradox.local</code>.gt;.local</code> (e.g. <code>paradox-84.local</code> at 192.168.2.84), so two bridges on one network never clash.</li>
 <li><i>Settings &rarr; Security</i>: change the password.</li>
 <li><i>Settings &rarr; Panel</i>: choose the login method (next section) and Save.</li>
 <li><i>System &rarr; Backup</i>: download a backup once everything works.</li>
@@ -153,7 +153,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <p>Only one at a time (<i>Settings &rarr; Smart home &rarr; Connect with</i>). The Homey app works with any choice.</p>
 <h3>MQTT (Home Assistant, Homebridge, Homey MQTT)</h3>
 <ul>
-<li>Enter the broker address, port, login and base topic (default <code>paradox</code>).</li>
+<li>Enter the broker address, port, login and base topic (default <code>paradox</code>). The last number of the bridge's IP address is added, e.g. <code>paradox-84/...</code> at 192.168.2.84, so two bridges on one broker never clash - the MQTT tab shows the topic in use. <b>Use a fixed address</b> (static IP or a DHCP reservation in the router) so the topics and the network name never change.</li>
 <li><b>Home Assistant discovery</b> creates a "Paradox alarm" device automatically: alarm panel per area, sensor per zone, panel connection, troubles, AC power, battery. <i>Publish Home Assistant discovery now</i> re-sends it. <i>Find old Home Assistant devices</i> lists Paradox entries left by an earlier integration or a previous bridge board and can delete them (this bridge's own device stays).</li>
 <li>Main topics: <code>paradox/area/1/state</code>, commands to <code>paradox/area/1/set</code> (<code>full</code>, <code>stay</code>, <code>sleep</code>, <code>disarm</code>), <code>paradox/zone/N/open</code>, <code>paradox/event</code>, <code>paradox/panel/ac_power</code>, <code>paradox/panel/battery_low</code>.</li>
 <li><b>Retain</b> options keep the last zone / panel state on the broker for clients that connect later.</li>
@@ -213,7 +213,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <h3>Can't find the bridge on the network</h3>
 <ul>
 <li>Look at the display - it shows the current IP address (or the access point).</li>
-<li>Try <code>http://paradox.local</code>, or your router's list of devices.</li>
+<li>Try <code>http://paradox-<code>http://paradox.local</code>lt;last IP number<code>http://paradox.local</code>gt;.local</code> (e.g. <code>paradox-84.local</code>), or your router's list of devices.</li>
 <li>If it can't join your WiFi for 30 seconds it opens the <b>ParadoxBridge</b> access point; connect and open <code>http://192.168.4.1</code>.</li>
 <li>After a wrong static IP: reset the settings (above) or join the access point.</li>
 </ul></section>
@@ -257,7 +257,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 
 <section id="ref"><h2>17. Addresses and ports</h2>
 <div class="tw"><table>
-<tr><td>Web page / API</td><td><code>http://&lt;bridge IP&gt;</code> or <code>http://paradox.local</code> (port 80)</td></tr>
+<tr><td>Web page / API</td><td><code>http://&lt;bridge IP&gt;</code> or <code>http://paradox-<code>http://paradox.local</code>lt;last IP number<code>http://paradox.local</code>gt;.local</code> (port 80)</td></tr>
 <tr><td>This manual</td><td><code>/manual</code> - no login needed</td></tr>
 <tr><td>Access point</td><td><code>ParadoxBridge</code>, <code>http://192.168.4.1</code></td></tr>
 <tr><td>HomeKit</td><td>port 1201</td></tr>

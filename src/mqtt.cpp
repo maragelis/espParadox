@@ -5,6 +5,7 @@
 #include <WiFi.h>
 
 #include "events.h"
+#include "net.h"
 #include "settings.h"
 #include "version.h"
 #include "zones.h"
@@ -41,7 +42,8 @@ uint32_t fnv1a(const char* s) {
   return h ? h : 1;
 }
 
-String topic(const char* suffix) { return cfg.mqttBase + "/" + suffix; }
+// Base topic + the IP-number suffix (paradox-84/...), so two bridges on one broker never clash.
+String topic(const char* suffix) { return netWithSuffix(cfg.mqttBase) + "/" + suffix; }
 
 void publish(const String& t, const String& payload, bool retain = true) {
   client.publish(t.c_str(), payload.c_str(), retain);
@@ -263,7 +265,7 @@ void publishState() {
     JsonDocument d;
     d["version"] = FW_VERSION;
     d["ip"] = WiFi.localIP().toString();
-    d["hostname"] = cfg.hostname;
+    d["hostname"] = netHostname();
     d["panelDetected"] = p.info().valid;
     d["model"] = p.info().model();
     char fw[16];
@@ -411,7 +413,7 @@ void onMessage(char* t, byte* payload, unsigned int len) {
     return;
   }
 
-  String prefix = cfg.mqttBase + "/";
+  String prefix = netWithSuffix(cfg.mqttBase) + "/";
   if (!tp.startsWith(prefix)) return;
   tp = tp.substring(prefix.length());
   Serial.printf("[mqtt] command %s = %s\n", tp.c_str(), msg.c_str());

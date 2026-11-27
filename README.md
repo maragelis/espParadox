@@ -47,7 +47,7 @@ press the BOOT button (GPIO0) and hold it for 10 seconds. Pressing it later does
 
 - **Display**: right button (GPIO35) cycles pages: connection → zones → events (→ HomeKit setup QR code + code while HomeKit is enabled).
   Left button (GPIO0) turns the backlight on or off.
-- **Web UI**: `http://paradox.local/`, the station IP, or `http://192.168.4.1/`
+- **Web UI**: `http://paradox-<last IP number>.local/` (e.g. `paradox-84.local`; the IP suffix keeps two bridges apart), the station IP, or `http://192.168.4.1/`
   on the `ParadoxBridge` access point. Arm, disarm, bypass, PGM on/off, beep, and
   sync the panel clock.
 - **JSON API**: `GET /api/status`, `POST /api/action` (`action`, `partition`, `zone`, `pgm`),
@@ -58,7 +58,9 @@ press the BOOT button (GPIO0) and hold it for 10 seconds. Pressing it later does
 ## MQTT (Homebridge / Homey)
 
 Enable it on **Settings → MQTT**: broker address, port, login and **base topic** (default
-`paradox`). Every topic below starts with the base topic. States are retained and published
+`paradox`). The last number of the bridge's IP address is added (`paradox-84` at
+192.168.2.84), so two bridges on one broker never clash; *Settings → MQTT* shows the topic in use.
+Every topic below starts with that base topic (written as `paradox/` below). States are retained and published
 when they change; live panel events are pushed as they happen.
 
 | Topic | Payload |

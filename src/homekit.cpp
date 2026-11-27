@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include <esp_system.h>
 
+#include "net.h"
 #include "qrgen.h"
 #include "settings.h"
 #include "version.h"
@@ -279,7 +280,7 @@ void homekitBegin(paradox::Panel& p) {
   homeSpan.setLogLevel(-1);               // keep the USB console for the bridge
   homeSpan.setSerialInputDisable(true);   // HomeSpan's own serial CLI off
   homeSpan.setPortNum(kHomekitPort);      // web UI stays on port 80
-  homeSpan.setHostNameSuffix("");         // same mDNS name as the bridge (paradox.local)
+  homeSpan.setHostNameSuffix("");         // same mDNS name as the bridge (paradox-84.local)
   homeSpan.setQRID(kSetupId);
   homeSpan.setSketchVersion(FW_VERSION);
   homeSpan.setPairCallback([](boolean isPaired) {
@@ -288,7 +289,7 @@ void homekitBegin(paradox::Panel& p) {
   // HomeSpan only starts HomeKit (mDNS + pairing server) when it has the credentials;
   // while HomeKit is on it also does the WiFi reconnects (see netLoop()).
   homeSpan.setWifiCredentials(cfg.wifiSsid.c_str(), cfg.wifiPassword.c_str());
-  homeSpan.begin(Category::Bridges, "Paradox Alarm", cfg.hostname.c_str(), "Paradox SP/MG Bridge");
+  homeSpan.begin(Category::Bridges, "Paradox Alarm", netHostname().c_str(), "Paradox SP/MG Bridge");
   applyCode(false);
 
   // Fixed accessory IDs so rooms / names in the Home app survive reboots and changes.
@@ -333,7 +334,7 @@ HomekitInfo homekitInfo() {
   i.controllers = controllerCount();
   i.paired = i.controllers > 0;
   i.accessories = nAccessories;
-  i.host = cfg.hostname + ".local";
+  i.host = netHostname() + ".local";
   if (i.enabled && homekitCodeValid(cfg.homekitCode)) {
     i.code = formatCode(cfg.homekitCode);
     i.setupUri = setupUri();

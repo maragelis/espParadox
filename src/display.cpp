@@ -92,6 +92,8 @@ void drawConnection(const paradox::Panel& p) {
     y += 16;
     row(y, "IP", n.ip, TFT_CYAN);
     y += 16;
+    row(y, "Name", netHostname() + ".local", TFT_CYAN);
+    y += 16;
   } else if (n.staConfigured) {
     row(y, "WiFi", "joining " + n.wantedSsid, TFT_ORANGE);
     y += 16;

@@ -50,4 +50,6 @@
 //   1.19.0 Display: HomeKit page with the setup QR code and code (when HomeKit is enabled)
 //   1.19.1 Factory reset button: only at start-up (press within 5 s of power-on, hold 10 s)
 //   1.19.2 Generic factory defaults (no WiFi / MQTT / PC password); T-Display build keeps the display on
-#define FW_VERSION "1.19.2"
+//   1.20.0 Network name = hostname + last IP number (paradox-84.local) so two bridges never clash
+//   1.20.1 MQTT base topic gets the IP number too; network name shown on the main page / display / settings
+#define FW_VERSION "1.20.1"

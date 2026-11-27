@@ -29,7 +29,7 @@ th{color:var(--mute);font-weight:600;font-size:12px}td.flags .pill{margin-right:
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;opacity:0;transition:.3s}
 .fold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}.fold>summary::-webkit-details-marker{display:none}.fold>summary::before{content:"\25B8";color:var(--mute);transition:transform .15s}.fold[open]>summary::before{transform:rotate(90deg)}.fold>summary h2{margin:0}.fold[open]>summary{margin-bottom:10px}.mute{color:var(--mute)}.ver{font-size:12px;font-weight:500;color:var(--mute)}
 </style></head><body>
-<header><h1>Paradox Bridge <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><span id="link" class="pill">…</span><span id="pt" class="pill" hidden></span><span id="ram" class="pill" title="Free memory (RAM). Low values cause crashes; the lowest value since start is in the Panel card.">RAM …</span><span id="alarm"></span>
+<header><h1>Paradox Bridge <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><span id="host" class="pill" title="Network name of this bridge (hostname + last number of its IP address)"></span><span id="link" class="pill">…</span><span id="pt" class="pill" hidden></span><span id="ram" class="pill" title="Free memory (RAM). Low values cause crashes; the lowest value since start is in the Panel card.">RAM …</span><span id="alarm"></span>
 <span class="mute" id="wifi"></span><span style="flex:1"></span>
 <button onclick="post('/api/time')">Sync panel clock</button><button onclick="act('beep')">Beep</button><button id="panelBtn" onclick="panelToggle()">…</button><a href="/manual" target="_blank"><button>Manual</button></a><a href="/settings"><button>Settings</button></a><button class="danger" onclick="if(confirm('Reboot the bridge? The panel connection drops for about 15 seconds.'))post('/api/reboot')">Reboot</button></header>
 <main>
@@ -66,6 +66,7 @@ function render(s){
  $('alarm').replaceChildren(s.panel.alarm?pill('SYSTEM IN ALARM','bad'):'');
  const M=s.memory||{},kb=v=>Math.round((v||0)/1024)+' KB';
  $('ram').textContent='RAM '+kb(M.heapFree)+' free';
+ if(s.hostname)$('host').textContent=s.hostname+'.local';
  {const p=s.passthrough||{};$('pt').hidden=!p.enabled;$('pt').className='pill '+(p.connected?'info':'warn');
   $('pt').textContent=p.connected?('BabyWare connected ('+p.client+')'):('BabyWare mode - waiting ('+Math.ceil(p.secondsLeft/60)+' min)');
   $('bwBanner').hidden=!p.enabled;}
@@ -171,8 +172,8 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
   <div class="hint">Pick an address outside your router's DHCP range (or reserve it in the router). <button type="button" id="ipCurrent">Use current values</button>
   <br><span id="ipNow"></span><br>If the bridge becomes unreachable after a wrong address: restart it, then within 5 s press its BOOT button and hold 10 s to reset the settings, or connect to its ParadoxBridge access point.</div>
  </div>
- <label>Hostname<input name="hostname" maxlength="32" pattern="[A-Za-z0-9-]+" required></label>
- <div class="hint">Reach the bridge at http://&lt;hostname&gt;.local</div>
+ <label>Hostname<span style="display:flex;align-items:center;gap:4px"><input name="hostname" maxlength="32" pattern="[A-Za-z0-9-]+" required><b class="netSfx"></b></span></label>
+ <div class="hint">The last number of the IP address is added, so two bridges never clash: reach this one at <b id="netName">http://&lt;hostname&gt;-&lt;last IP number&gt;.local</b></div>
 </fieldset>
 <fieldset data-tab="network"><legend>Fallback access point</legend>
  <label>AP name<input name="apSsid" maxlength="32" required></label>
@@ -218,7 +219,8 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <label>User<input name="mqttUser" maxlength="64" autocomplete="off"></label>
  <label>Password<input name="mqttPassword" type="password" maxlength="64" autocomplete="new-password"></label>
  <label>No password<input name="mqttPasswordClear" type="checkbox"></label>
- <label>Base topic<input name="mqttBase" maxlength="48" required pattern="[^+#]+"></label>
+ <label>Base topic<span style="display:flex;align-items:center;gap:4px"><input name="mqttBase" maxlength="48" required pattern="[^+#]+"><b class="netSfx"></b></span></label>
+ <div class="hint">The last number of the IP address is added, so two bridges on one broker never clash. Topics in use: <b id="mqttTopic"></b><code>/…</code></div>
  <div class="hint">Prefix for every topic, e.g. <code>paradox</code> gives paradox/area/1/state, paradox/area/1/set, paradox/zone/3/open …</div>
  <label>Retain zone states<input name="mqttRetainZones" type="checkbox"></label>
  <div class="hint">zone/N/open and zone/N/json are kept by the broker, so a client that connects later gets the current state at once. Untick to send them only when they change.</div>
@@ -359,6 +361,9 @@ async function load(){
  f.ipMode.value=c.staticIp?'static':'dhcp';
  for(const k of ['ip','subnet','gateway','dns1','dns2'])f[k].value=c[k]||'';
  if(!f.subnet.value)f.subnet.value='255.255.255.0';
+ if(c.networkName)document.getElementById("netName").textContent="http://"+c.networkName+".local";
+ document.querySelectorAll(".netSfx").forEach(e=>e.textContent=c.netSuffix||"");
+ document.getElementById("mqttTopic").textContent=c.mqttTopic||c.mqttBase;
  ipCur=c.current;document.getElementById('ipNow').textContent=c.current.connected?('Now: '+c.current.ip+' / '+c.current.subnet+', gateway '+c.current.gateway+', DNS '+c.current.dns1):'';
  document.getElementById('staticBox').hidden=!c.staticIp;
  f.displayEnabled.checked=c.displayEnabled;pinCfg=c.pins;

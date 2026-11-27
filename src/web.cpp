@@ -93,6 +93,7 @@ void handleGetConfig() {
   d["apSsid"] = cfg.apSsid;
   d["apPasswordSet"] = cfg.apPassword.length() > 0;
   d["hostname"] = cfg.hostname;
+  d["networkName"] = netHostname();  // hostname + "-" + last IP number
   d["staticIp"] = cfg.staticIp;
   d["ip"] = cfg.ip;
   d["subnet"] = cfg.subnet;
@@ -128,6 +129,8 @@ void handleGetConfig() {
   d["mqttUser"] = cfg.mqttUser;
   d["mqttPasswordSet"] = cfg.mqttPassword.length() > 0;
   d["mqttBase"] = cfg.mqttBase;
+  d["mqttTopic"] = netWithSuffix(cfg.mqttBase);  // base topic in use
+  d["netSuffix"] = netSuffix();
   d["mqttAllowControl"] = cfg.mqttAllowControl;
   d["mqttRetainZones"] = cfg.mqttRetainZones;
   d["mqttRetainPanel"] = cfg.mqttRetainPanel;
@@ -238,7 +241,7 @@ void handleSetConfig() {
 
   String msg = "Saved. Rebooting - reconnect in about 10 seconds";
   if (n.staticIp && (!cfg.staticIp || n.ip != cfg.ip)) msg += " at http://" + n.ip + "/";
-  else if (!n.staticIp && cfg.staticIp) msg += " - the router will give it a new address (try http://" + n.hostname + ".local/)";
+  else if (!n.staticIp && cfg.staticIp) msg += " - the router will give it a new address (try http://" + n.hostname + "-<last number of the new IP>.local/)";
   msg += ".";
   reply(true, msg.c_str());
   applySettings(n, "saved from web");
@@ -406,6 +409,7 @@ void buildStatusJson(String& out) {
   char buf[96];
 
   d["version"] = FW_VERSION;
+  d["hostname"] = netHostname();  // network name in use (hostname + IP number)
   d["defaultPassword"] = cfg.webPassword == WEB_PASSWORD;  // still the factory password
   d["displayEnabled"] = cfg.displayEnabled;
   d["mqtt"] = mqttStatus();

@@ -4,6 +4,7 @@
 #include <ESPmDNS.h>
 
 #include "display.h"
+#include "net.h"
 #include "settings.h"
 
 namespace {
@@ -21,7 +22,7 @@ void otaProgress(const char* source, unsigned done, unsigned total) {
 
 void otaBegin() {
   if (!cfg.otaNetwork) return;
-  ArduinoOTA.setHostname(cfg.hostname.c_str());
+  ArduinoOTA.setHostname(netHostname().c_str());
   ArduinoOTA.setPassword(cfg.webPassword.c_str());
   ArduinoOTA.setMdnsEnabled(false);  // mDNS is already running (main.cpp)
   ArduinoOTA.onStart([] { Serial.println("[ota] network update started"); });

@@ -19,7 +19,7 @@
 #define WIFI_PASSWORD  ""
 #define AP_SSID        "ParadoxBridge"
 #define AP_PASSWORD    "paradox123"      // at least 8 characters
-#define HOSTNAME       "paradox"         // -> http://paradox.local
+#define HOSTNAME       "paradox"         // -> http://paradox-<last IP number>.local (e.g. paradox-84.local)
 
 // IP address: 0 = DHCP (automatic), 1 = static (the values below)
 #define WIFI_STATIC_IP   0
