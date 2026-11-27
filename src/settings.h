@@ -35,6 +35,9 @@ struct Settings {
   bool mqttRetainPanel;   // retain panel status + area topics
   bool haDiscovery;       // Home Assistant MQTT discovery
   String haPrefix;        // discovery prefix, normally "homeassistant"
+  // BabyWare pass-through TCP port (the on/off switch is not saved: always off after a reboot)
+  uint16_t passthroughPort;
+  String ip150Password;  // BabyWare "IP150" connection password
   // Apple HomeKit (mutually exclusive with MQTT)
   bool homekitEnabled;
   String homekitCode;      // 8-digit setup code, generated on first start

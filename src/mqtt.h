@@ -31,6 +31,7 @@
 //   <base>/beep                      any payload
 
 #include <Arduino.h>
+#include <vector>
 
 #include "paradox.h"
 
@@ -40,4 +41,19 @@ void mqttPublishEvent(const paradox::Event& e);
 const char* mqttStatus();
 // Re-send every Home Assistant discovery config and all retained states now.
 // Returns false if MQTT isn't connected.
-bool mqttRepublish();  // "disabled", "connected", "connecting", ...
+bool mqttRepublish();
+// BabyWare mode: publish "offline" and disconnect; mqttLoop() does nothing until reboot.
+void mqttShutdown();
+
+// Old Home Assistant discovery entries of Paradox devices that are NOT this bridge
+// (an earlier integration, a previous bridge board, ...). Only entries whose device /
+// node ID starts with "paradox" or that name Paradox as manufacturer are considered.
+struct HaStaleEntry {
+  String topic;  // <prefix>/<component>/<node>/<object>/config
+  String name;
+  String node;
+};
+// Reads the retained discovery configs from the broker (~3 s). False + err if not possible.
+bool mqttHaScan(std::vector<HaStaleEntry>& out, String& err);
+// Deletes them (empty retained message each). Returns how many were removed.
+int mqttHaDelete(const std::vector<HaStaleEntry>& entries);  // "disabled", "connected", "connecting", ...

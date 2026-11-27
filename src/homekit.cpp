@@ -35,6 +35,11 @@ uint8_t targetFor(const paradox::Partition& a) {
 
 uint8_t currentFor(const paradox::Partition& a) { return a.inAlarm() ? 4 : targetFor(a); }
 
+// Status page 0 (troubles: AC failure, no / low battery) has arrived.
+bool troublesReady() {
+  return panel->state() == paradox::LinkState::Online && (panel->system().pagesSeen & 0x01);
+}
+
 void accessoryInfo(const char* name, const String& serial) {
   new Service::AccessoryInformation();
   new Characteristic::Identify();
@@ -51,11 +56,13 @@ struct AreaService : Service::SecuritySystem {
   int area;
   SpanCharacteristic* current;
   SpanCharacteristic* target;
+  SpanCharacteristic* fault;
   uint32_t lastCheck = 0;
 
   explicit AreaService(int a) : area(a) {
     current = new Characteristic::SecuritySystemCurrentState(3);
     target = new Characteristic::SecuritySystemTargetState(3);
+    fault = new Characteristic::StatusFault(0);  // 1 while AC power or the panel battery has a trouble
   }
 
   // Home app picked Home / Away / Night / Off.
@@ -81,6 +88,33 @@ struct AreaService : Service::SecuritySystem {
     // panel 20 s to act (exit delay, refusal) before putting the target back in line.
     uint8_t t = targetFor(a);
     if (target->getVal() != t && millis() - lastHomekitWriteMs > 20000) target->setVal(t);
+    if (troublesReady()) {
+      const auto& s = panel->system();
+      uint8_t f = (s.acFailure() || s.batteryLow()) ? 1 : 0;
+      if (fault->getVal() != f) fault->setVal(f);
+    }
+  }
+};
+
+// ---- Panel AC power / battery (HomeKit has no mains-power sensor: contact sensors) ----
+// Closed = OK, open = trouble. The battery sensor also sets Low battery.
+
+struct PanelTroubleSensor : Service::ContactSensor {
+  bool battery;
+  SpanCharacteristic* state;
+  SpanCharacteristic* low = nullptr;
+  uint32_t lastCheck = 0;
+  explicit PanelTroubleSensor(bool isBattery) : battery(isBattery) {
+    state = new Characteristic::ContactSensorState(0);
+    if (battery) low = new Characteristic::StatusLowBattery(0);
+  }
+  void loop() override {
+    if (millis() - lastCheck < 1000) return;
+    lastCheck = millis();
+    if (!troublesReady()) return;
+    bool trouble = battery ? panel->system().batteryLow() : panel->system().acFailure();
+    if (state->getVal() != (trouble ? 1 : 0)) state->setVal(trouble ? 1 : 0);
+    if (low && low->getVal() != (trouble ? 1 : 0)) low->setVal(trouble ? 1 : 0);
   }
 };
 
@@ -261,6 +295,13 @@ void homekitBegin(paradox::Panel& p) {
   new SpanAccessory(1);
   accessoryInfo("Paradox Alarm", cfg.hostname);
   nAccessories = 0;
+  new SpanAccessory(2);
+  accessoryInfo("AC power", "panel-ac");
+  new PanelTroubleSensor(false);
+  new SpanAccessory(3);
+  accessoryInfo("Panel battery", "panel-battery");
+  new PanelTroubleSensor(true);
+  nAccessories += 2;
   for (int i = 0; i < paradox::kPartitions; i++) {
     if (!partitionInUse(i)) continue;
     new SpanAccessory(100 + i + 1);

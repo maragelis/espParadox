@@ -9,4 +9,6 @@
 void displayBegin();
 void displayLoop(const paradox::Panel& panel);
 void displayMessage(const char* text);  // full-screen notice, shown for ~2 s
+// Permanent full-screen notice (BabyWare mode): the normal pages stop until reboot.
+void displayFreeze(const char* line1, const char* line2);
 void displayProgress(const char* title, int percent);  // progress bar (OTA)

@@ -3,6 +3,8 @@
 //   - one Security System per area in use   (Stay = Home, Full = Away, Sleep = Night)
 //   - one Contact or Motion sensor per enabled zone (type from Settings -> Zones),
 //     with Tampered and Low battery.
+//   - "AC power" and "Panel battery" contact sensors (closed = OK, open = trouble);
+//     the area alarms show Fault while either has a trouble.
 // HomeKit and MQTT are mutually exclusive (Settings -> Smart home).
 // The accessory list is built at boot: after changing zones, reboot to update it.
 

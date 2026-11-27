@@ -38,4 +38,12 @@
 //          Smart home = none / MQTT / HomeKit (one at a time); 1.9 MB app partitions (USB once)
 //   1.14.1 HomeKit off: HomeSpan data (pairings, keys, setup code, WiFi copy) removed at boot
 //   1.15.0 Built-in user manual at /manual (no login needed), linked from the page headers
-#define FW_VERSION "1.15.0"
+//   1.15.1 HomeKit: AC power + panel battery sensors, Fault on the area alarms
+//   1.15.2 Free RAM badge at the top of the main page; memory / settings storage / firmware details
+//   1.15.3 MQTT: find + delete old Paradox Home Assistant discovery entries (keeps this bridge's)
+//   1.16.0 BabyWare serial pass-through (TCP, RFC 2217 or raw), switched on for a time window
+//   1.16.1 Pass-through: drain the old session's last panel answer before handing over
+//   1.17.0 BabyWare mode: everything except the web page stops; only a reboot restores normal operation
+//   1.17.1 Pass-through diagnostics: first bytes of each direction shown in status / Panel tab
+//   1.18.0 IP150 emulation: BabyWare's "IP150 / Static IP" connection works directly (AES-256, PAI protocol)
+#define FW_VERSION "1.18.0"

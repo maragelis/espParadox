@@ -84,6 +84,11 @@ const char* haState(const paradox::Partition& a) {
 
 // ---- Home Assistant MQTT discovery -------------------------------------------
 
+// ---- old discovery entries scan -----------------------------------------------------
+bool scanning = false;
+bool shutDown = false;  // BabyWare mode
+std::vector<HaStaleEntry> scanFound;
+
 String nodeId() {
   String mac = WiFi.macAddress();
   mac.replace(":", "");
@@ -376,6 +381,28 @@ void onMessage(char* t, byte* payload, unsigned int len) {
   String m = msg;
   m.toLowerCase();
 
+  if (scanning && tp.startsWith(cfg.haPrefix + "/") && tp.endsWith("/config")) {
+    if (msg.isEmpty()) return;  // already deleted
+    // <prefix>/<component>/<node>/<object>/config  (or without <node>)
+    String rest = tp.substring(cfg.haPrefix.length() + 1);
+    int s1 = rest.indexOf('/'), s2 = rest.indexOf('/', s1 + 1), s3 = rest.indexOf('/', s2 + 1);
+    String node = s3 > 0 ? rest.substring(s1 + 1, s2) : String();
+    String nodeLc = node;
+    nodeLc.toLowerCase();
+    if (node == nodeId()) return;  // this bridge's own entities
+    if (m.indexOf(nodeId()) >= 0) return;  // payload refers to this bridge's device
+    bool paradox = nodeLc.startsWith("paradox") || m.indexOf("\"manufacturer\":\"paradox\"") >= 0 ||
+                   m.indexOf("\"mf\":\"paradox\"") >= 0;
+    if (!paradox) return;
+    HaStaleEntry e;
+    e.topic = tp;
+    e.node = node;
+    JsonDocument d;
+    if (!deserializeJson(d, msg)) e.name = d["name"] | "";
+    scanFound.push_back(e);
+    return;
+  }
+
   if (cfg.haDiscovery && tp == cfg.haPrefix + "/status") {
     if (m == "online") {  // Home Assistant restarted: send discovery + states again
       Serial.println("[mqtt] Home Assistant online - republishing discovery");
@@ -460,7 +487,20 @@ void mqttBegin(paradox::Panel& p) {
   strlcpy(status, "waiting for WiFi", sizeof status);
 }
 
+void mqttShutdown() {
+  shutDown = true;
+  if (client.connected()) {
+    publish(topic("panel/link"), "disconnected");
+    publish(topic("status"), "offline");  // Home Assistant: unavailable
+    client.loop();
+    client.disconnect();
+  }
+  strlcpy(status, "stopped (BabyWare mode)", sizeof status);
+  Serial.println("[mqtt] stopped for BabyWare mode");
+}
+
 void mqttLoop() {
+  if (shutDown) return;
   if (!cfg.mqttEnabled || cfg.mqttHost.isEmpty()) return;
   if (WiFi.status() != WL_CONNECTED) {
     strlcpy(status, "waiting for WiFi", sizeof status);
@@ -507,6 +547,44 @@ bool mqttRepublish() {
   Serial.println("[mqtt] republishing discovery + states (requested)");
   publishState();
   return true;
+}
+
+bool mqttHaScan(std::vector<HaStaleEntry>& out, String& err) {
+  out.clear();
+  if (!cfg.mqttEnabled || !client.connected()) {
+    err = "MQTT is not connected";
+    return false;
+  }
+  scanFound.clear();
+  client.setBufferSize(4096);  // discovery configs of other integrations can be large
+  scanning = true;
+  String t1 = cfg.haPrefix + "/+/+/+/config", t2 = cfg.haPrefix + "/+/+/config";
+  client.subscribe(t1.c_str());
+  client.subscribe(t2.c_str());
+  uint32_t t0 = millis();
+  while (millis() - t0 < 3000 && client.connected()) {  // retained messages arrive at once
+    client.loop();
+    delay(5);
+  }
+  client.unsubscribe(t1.c_str());
+  client.unsubscribe(t2.c_str());
+  scanning = false;
+  client.setBufferSize(1536);
+  out = scanFound;
+  Serial.printf("[mqtt] HA scan: %u old Paradox discovery entries\n", (unsigned)out.size());
+  return true;
+}
+
+int mqttHaDelete(const std::vector<HaStaleEntry>& entries) {
+  if (!client.connected()) return 0;
+  int n = 0;
+  for (const auto& e : entries) {
+    if (!e.topic.startsWith(cfg.haPrefix + "/") || !e.topic.endsWith("/config") || e.node == nodeId()) continue;
+    if (client.publish(e.topic.c_str(), "", true)) n++;  // empty retained = delete in HA
+    client.loop();
+  }
+  Serial.printf("[mqtt] HA cleanup: removed %d old discovery entries\n", n);
+  return n;
 }
 
 const char* mqttStatus() { return cfg.mqttEnabled ? status : "disabled"; }

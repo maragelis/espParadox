@@ -173,6 +173,11 @@ class Panel {
   void disconnect();
   void connect();
   bool stopped() const { return stopped_; }
+  // BabyWare pass-through: close the session and leave the serial port alone until
+  // endPassthrough() (then log in again).
+  void beginPassthrough();
+  void endPassthrough();
+  bool passthrough() const { return passthrough_; }
   // User-code (NEware) login: the user number and area rights the panel answered
   // (0 / 0 for a PC password login).
   uint8_t loginUser() const { return loginUser_; }
@@ -262,6 +267,7 @@ class Panel {
   char lastAction_[64] = "";
   bool systemAlarm_ = false;
   bool stopped_ = false;  // disconnected by the user
+  bool passthrough_ = false;  // serial port lent to BabyWare
   uint8_t loginUser_ = 0, loginAreas_ = 0;
   // Login refusals in a row. The bridge stops retrying (needs Connect) so it never
   // keeps hammering the panel with a wrong code / password.

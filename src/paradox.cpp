@@ -357,8 +357,23 @@ void Panel::onTimeout() {
   lastReplyMs_ = millis();
 }
 
+void Panel::beginPassthrough() {
+  if (passthrough_) return;
+  if (state_ != LinkState::Disconnected) sendClose();  // end our session cleanly
+  passthrough_ = true;
+  stopped_ = true;
+  dropLink("BabyWare session (pass-through)", 0);
+}
+
+void Panel::endPassthrough() {
+  if (!passthrough_) return;
+  passthrough_ = false;
+  rxLen_ = 0;
+  connect();  // log in again
+}
+
 void Panel::loop() {
-  if (!port_) return;
+  if (!port_ || passthrough_) return;  // pass-through owns the serial port
   readSerial();
   uint32_t now = millis();
   if (now - countersResetMs_ >= kCounterWindowMs) {  // keep the counters small and recent

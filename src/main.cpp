@@ -14,6 +14,7 @@
 #include "display.h"
 #include "events.h"
 #include "homekit.h"
+#include "passthrough.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "net.h"
@@ -342,6 +343,7 @@ void setup() {
   webBegin(panel);
   mqttBegin(panel);
   homekitBegin(panel);  // only if chosen in Settings -> Smart home
+  passthroughBegin(panel, Serial2);  // BabyWare pass-through (off until switched on)
   otaBegin();
   Serial.println("Type 'help' for console commands.");
 }
@@ -366,12 +368,19 @@ static void resetButtonLoop() {
 
 void loop() {
   resetButtonLoop();
-  panel.loop();
   netLoop();
+  passthroughLoop();
+  webLoop();
+  consoleLoop();
+  if (passthroughMode()) {
+    // BabyWare mode: panel driver, MQTT, HomeKit, network OTA and display pages stay
+    // stopped until the bridge reboots.
+    displayLoop(panel);  // backlight button only (notice is frozen)
+    return;
+  }
+  panel.loop();
   otaLoop();
   mqttLoop();
   homekitLoop();
-  webLoop();
-  consoleLoop();
   displayLoop(panel);
 }

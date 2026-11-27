@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 #include <WebServer.h>
+#include <esp_ota_ops.h>
+#include <nvs.h>
 #include <time.h>
 
 #include "config.h"
@@ -9,6 +11,7 @@
 #include "net.h"
 #include "display.h"
 #include "homekit.h"
+#include "passthrough.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "settings.h"
@@ -118,6 +121,8 @@ void handleGetConfig() {
   d["displayEnabled"] = cfg.displayEnabled;
   d["mqttEnabled"] = cfg.mqttEnabled;
   d["integration"] = cfg.homekitEnabled ? "homekit" : cfg.mqttEnabled ? "mqtt" : "none";
+  d["passthroughPort"] = cfg.passthroughPort;
+  d["ip150PasswordSet"] = cfg.ip150Password.length() > 0;
   d["mqttHost"] = cfg.mqttHost;
   d["mqttPort"] = cfg.mqttPort;
   d["mqttUser"] = cfg.mqttUser;
@@ -204,6 +209,10 @@ void handleSetConfig() {
   String integ = arg("integration");  // none | mqtt | homekit - only one at a time
   n.mqttEnabled = integ == "mqtt";
   n.homekitEnabled = integ == "homekit";
+  long ptPort;
+  if (!parseNum(arg("passthroughPort"), 1, 65535, ptPort)) return reply(false, "BabyWare pass-through port must be a number");
+  n.passthroughPort = ptPort;
+  secret("ip150Password", n.ip150Password);  // empty = keep
   n.mqttHost = arg("mqttHost");
   n.mqttUser = arg("mqttUser");
   secret("mqttPassword", n.mqttPassword);
@@ -401,7 +410,42 @@ void buildStatusJson(String& out) {
   d["displayEnabled"] = cfg.displayEnabled;
   d["mqtt"] = mqttStatus();
   d["homekit"] = homekitInfo().status;
+  {
+    PassthroughInfo pt = passthroughInfo();
+    JsonObject o = d["passthrough"].to<JsonObject>();
+    o["enabled"] = pt.enabled;
+    o["mode"] = pt.enabled;  // BabyWare mode: normal services stopped
+    o["connected"] = pt.connected;
+    o["secondsLeft"] = pt.secondsLeft;
+    o["port"] = pt.port;
+    o["client"] = pt.client;
+    o["rfc2217"] = pt.rfc2217;
+    o["protocol"] = pt.protocol;
+    o["ip150State"] = pt.ip150State;
+    o["baud"] = pt.baud;
+    o["bytesToPanel"] = pt.bytesToPanel;
+    o["bytesFromPanel"] = pt.bytesFromPanel;
+    o["firstToPanel"] = pt.firstToPanel;
+    o["firstFromPanel"] = pt.firstFromPanel;
+  }
   d["uptime"] = millis() / 1000;
+  {
+    // RAM is what matters at runtime (low heap = crashes); flash only for updates / settings.
+    JsonObject m = d["memory"].to<JsonObject>();
+    m["heapFree"] = ESP.getFreeHeap();
+    m["heapMin"] = ESP.getMinFreeHeap();        // lowest since start
+    m["heapMaxBlock"] = ESP.getMaxAllocHeap();  // largest single block
+    m["heapTotal"] = ESP.getHeapSize();
+    nvs_stats_t ns;
+    if (nvs_get_stats(NULL, &ns) == ESP_OK) {
+      m["nvsUsed"] = ns.used_entries;
+      m["nvsTotal"] = ns.total_entries;
+    }
+    static uint32_t sketchSize = ESP.getSketchSize();  // slow to compute: once
+    m["firmwareSize"] = sketchSize;
+    const esp_partition_t* run = esp_ota_get_running_partition();
+    m["firmwareSlot"] = run ? run->size : 0;
+  }
 
   NetInfo n = netInfo();
   JsonObject wifi = d["wifi"].to<JsonObject>();
@@ -611,6 +655,51 @@ void webBegin(paradox::Panel& p) {
     if (!cfg.homekitEnabled) return reply(false, "HomeKit is off");
     homekitNewCode();
     reply(true, "New setup code created");
+  });
+  // Old Home Assistant discovery entries (other Paradox integrations / earlier bridges)
+  server.on("/api/mqtt/ha-scan", HTTP_GET, [] {
+    if (!auth()) return;
+    std::vector<HaStaleEntry> list;
+    String err;
+    if (!mqttHaScan(list, err)) return reply(false, err.c_str());
+    JsonDocument d;
+    d["ok"] = true;
+    JsonArray a = d["items"].to<JsonArray>();
+    for (const auto& e : list) {
+      JsonObject o = a.add<JsonObject>();
+      o["topic"] = e.topic;
+      o["name"] = e.name;
+      o["node"] = e.node;
+    }
+    String s;
+    serializeJson(d, s);
+    server.send(200, "application/json", s);
+  });
+  server.on("/api/mqtt/ha-cleanup", HTTP_POST, [] {
+    if (!auth()) return;
+    std::vector<HaStaleEntry> list;
+    String err;
+    if (!mqttHaScan(list, err)) return reply(false, err.c_str());  // scan again: delete only what is there now
+    int n = mqttHaDelete(list);
+    String msg = "Removed " + String(n) + " old Home Assistant entit" + (n == 1 ? "y" : "ies") +
+                 ". This bridge's own device was kept.";
+    reply(true, msg.c_str());
+  });
+  // ---- BabyWare pass-through ----
+  server.on("/api/passthrough/enable", HTTP_POST, [] {
+    if (!auth()) return;
+    long minutes = server.arg("minutes").toInt();
+    if (minutes < 1 || minutes > 240) minutes = 30;
+    passthroughEnable(minutes);
+    String msg = "BabyWare mode on - connect BabyWare to " + WiFi.localIP().toString() + " port " +
+                 String(cfg.passthroughPort) + ". Everything else is stopped; reboot to return (automatic after " +
+                 String(minutes) + " min without BabyWare).";
+    reply(true, msg.c_str());
+  });
+  server.on("/api/passthrough/disable", HTTP_POST, [] {
+    if (!auth()) return;
+    reply(true, "Leaving BabyWare mode - rebooting. Reconnect in about 15 seconds.");
+    restartAtMs = millis() + 1500;
   });
   server.on("/api/mqtt/republish", HTTP_POST, [] {
     if (!auth()) return;

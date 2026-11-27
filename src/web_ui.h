@@ -28,10 +28,11 @@ th{color:var(--mute);font-weight:600;font-size:12px}td.flags .pill{margin-right:
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;opacity:0;transition:.3s}
 .fold>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}.fold>summary::-webkit-details-marker{display:none}.fold>summary::before{content:"\25B8";color:var(--mute);transition:transform .15s}.fold[open]>summary::before{transform:rotate(90deg)}.fold>summary h2{margin:0}.fold[open]>summary{margin-bottom:10px}.mute{color:var(--mute)}.ver{font-size:12px;font-weight:500;color:var(--mute)}
 </style></head><body>
-<header><h1>Paradox Bridge <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><span id="link" class="pill">…</span><span id="alarm"></span>
+<header><h1>Paradox Bridge <span class="ver">v)HTML" FW_VERSION R"HTML(</span></h1><span id="link" class="pill">…</span><span id="pt" class="pill" hidden></span><span id="ram" class="pill" title="Free memory (RAM). Low values cause crashes; the lowest value since start is in the Panel card.">RAM …</span><span id="alarm"></span>
 <span class="mute" id="wifi"></span><span style="flex:1"></span>
 <button onclick="post('/api/time')">Sync panel clock</button><button onclick="act('beep')">Beep</button><button id="panelBtn" onclick="panelToggle()">…</button><a href="/manual" target="_blank"><button>Manual</button></a><a href="/settings"><button>Settings</button></a><button class="danger" onclick="if(confirm('Reboot the bridge? The panel connection drops for about 15 seconds.'))post('/api/reboot')">Reboot</button></header>
 <main>
+<div class="card" id="bwBanner" hidden style="border-color:var(--warn)"><b>BabyWare mode.</b> The bridge's panel connection, MQTT / Home Assistant, HomeKit and Homey updates are stopped while BabyWare uses the panel. The values below are frozen. <b>Reboot the bridge</b> (button at the top) to return to normal operation.</div>
 <div class="card" id="pwWarn" hidden style="border-color:var(--bad)"><b>Security:</b> the bridge still uses the factory password. <a href="/settings#pwBox">Change it in Settings</a>.</div>
 <div class="grid2" id="parts"></div>
 <div class="grid2">
@@ -62,6 +63,12 @@ function render(s){
  const ls=s.link.state;$('link').className='pill '+(ls==='online'?'ok':ls==='disconnected'?'bad':'warn');
  $('link').textContent='Panel '+ls+(s.link.error?' – '+s.link.error:'')+(s.link.configReading?' – reading configuration…':'');
  $('alarm').replaceChildren(s.panel.alarm?pill('SYSTEM IN ALARM','bad'):'');
+ const M=s.memory||{},kb=v=>Math.round((v||0)/1024)+' KB';
+ $('ram').textContent='RAM '+kb(M.heapFree)+' free';
+ {const p=s.passthrough||{};$('pt').hidden=!p.enabled;$('pt').className='pill '+(p.connected?'info':'warn');
+  $('pt').textContent=p.connected?('BabyWare connected ('+p.client+')'):('BabyWare mode - waiting ('+Math.ceil(p.secondsLeft/60)+' min)');
+  $('bwBanner').hidden=!p.enabled;}
+ $('ram').className='pill '+(M.heapMin<25000?'bad':M.heapMin<50000?'warn':'ok');
  $('wifi').textContent=(s.wifi.connected?s.wifi.ssid+' '+s.wifi.ip+' ('+s.wifi.rssi+' dBm)':'')+(s.wifi.ap?'  AP '+s.wifi.apIp:'');
  $('parts').replaceChildren(...s.partitions.filter(p=>p.inUse).map(p=>{
   const st=p.alarm?pill('ALARM','bad'):p.armed?pill(p.mode.toUpperCase(),'warn'):pill('DISARMED','ok');
@@ -78,6 +85,9 @@ function render(s){
   ['Model',pi.detected?pi.model+' (0x'+pi.productId.toString(16)+')':'not detected'],['Firmware',pi.firmware],['Panel ID',pi.panelId],['Panel time',pi.time],
   ['AC power',pi.acFailure?'FAILURE':'OK'],['Battery',pi.batteryLow?'LOW / MISSING':'OK'],['AC / DC / battery (raw)',pi.acLevel+' / '+pi.dcLevel+' / '+pi.batteryLevel],['RF noise floor',pi.rfNoise],
   ['Frames rx / tx / bad (last '+Math.floor(s.link.countersAge/60)+' of 10 min)',s.link.framesRx+' / '+s.link.framesTx+' / '+s.link.checksumErrors],['Last action',s.link.lastAction||'—'],['MQTT',s.mqtt],['Firmware (bridge)','v'+s.version],
+  ['Memory (RAM)',kb(M.heapFree)+' free of '+kb(M.heapTotal)+' \u00b7 lowest since start '+kb(M.heapMin)+' \u00b7 largest block '+kb(M.heapMaxBlock)],
+  ['Settings storage',M.nvsTotal?(M.nvsUsed+' of '+M.nvsTotal+' entries used ('+Math.round(M.nvsUsed*100/M.nvsTotal)+'%)'):'-'],
+  ['Firmware',M.firmwareSlot?((M.firmwareSize/1048576).toFixed(2)+' MB of '+(M.firmwareSlot/1048576).toFixed(2)+' MB slot ('+Math.round(M.firmwareSize*100/M.firmwareSlot)+'%)'):'-'],
   ['Uptime',Math.floor(s.uptime/60)+' min']].flatMap(([k,v])=>[el('dt',{},k),el('dd',{},String(v))]));
  $('troubles').replaceChildren(...(s.troubles.length?s.troubles.map(t=>pill(t,'warn')):[document.createTextNode('No troubles')]));
  $('zones').replaceChildren(...s.zones.filter(z=>z.enabled).map(z=>el('tr',{},el('td',{},String(z.id)),el('td',{},z.label),el('td',{class:'mute'},z.definitionName+' · '+areas(z.partitions)),
@@ -193,7 +203,8 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
    </div>
   </div>
   <div class="hint" style="margin-top:10px">iPhone: <b>Home app</b> &rarr; <b>+</b> &rarr; <b>Add Accessory</b> &rarr; scan the QR code, or tap <i>More options</i> &rarr; <i>Paradox Alarm</i> and type the setup code.
-   You get one alarm (Home = Stay, Away = Full, Night = Sleep) per area and one door / motion sensor per enabled zone.
+   You get one alarm (Home = Stay, Away = Full, Night = Sleep) per area, one door / motion sensor per enabled zone,
+   and <i>AC power</i> / <i>Panel battery</i> sensors (closed = OK, open = trouble; the alarm shows <i>Fault</i> meanwhile).
    After changing zones on the <b>Zones</b> tab, reboot the bridge so HomeKit gets the new list.</div>
   <div class="actions" style="margin-top:8px"><button type="button" id="hkNewCode">New setup code</button>
    <button type="button" class="danger" id="hkUnpair">Remove all pairings</button></div>
@@ -216,7 +227,11 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  <div class="hint">Arm / disarm / bypass / PGM commands. Untick for status only. Protect your broker with a password.</div>
  <label>Home Assistant discovery<input name="haDiscovery" type="checkbox"></label>
  <label>Discovery prefix<input name="haPrefix" maxlength="32" required pattern="[^+#]+"></label>
- <div class="actions" style="margin:6px 0"><button type="button" id="haPub">Publish Home Assistant discovery now</button></div>
+ <div class="actions" style="margin:6px 0"><button type="button" id="haPub">Publish Home Assistant discovery now</button>
+  <button type="button" id="haScan">Find old Home Assistant devices</button></div>
+ <div id="haOld" class="hint" hidden style="border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:6px 0">
+  <div id="haOldText"></div><ul id="haOldList" style="margin:6px 0 6px 18px;padding:0;max-height:220px;overflow:auto"></ul>
+  <button type="button" class="danger" id="haClean" hidden>Delete these old entries</button></div>
  <div class="hint">Home Assistant creates a "Paradox alarm" device: an alarm panel per area and a motion / contact sensor per enabled zone (sensor type is set per zone on the <b>Zones</b> tab).</div>
 </fieldset>
 <fieldset data-tab="system"><legend>Network firmware upload</legend>
@@ -268,6 +283,24 @@ button.primary{background:var(--info);border-color:var(--info);color:#fff}button
  </div>
  </div>
  <label>Read configuration from panel<input name="readLabels" type="checkbox"></label>
+</fieldset>
+<fieldset data-tab="panel" id="ptBox"><legend>BabyWare pass-through</legend>
+ <div class="hint" style="margin-bottom:6px">Lets BabyWare reach the panel through the bridge, as if connected by cable. While BabyWare is connected
+  <b>BabyWare mode stops everything except this web page</b>: the bridge's panel connection, MQTT / Home Assistant, HomeKit, Homey updates and
+  the display pages. <b>Only a reboot brings them back</b> (<i>Exit BabyWare mode</i>, the Reboot button, or automatically when the chosen time passes without BabyWare connected).
+  <b>BabyWare can change the panel's programming</b> - use it as carefully as a cable.</div>
+ <div id="ptStatus" style="font-weight:600;margin:4px 0"></div>
+ <pre id="ptDiag" hidden style="white-space:pre-wrap;word-break:break-all;font:12px ui-monospace,Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:4px 0"></pre>
+ <div class="actions"><span class="hint">Reboot if BabyWare doesn't connect within</span><select id="ptMinutes" style="width:auto"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="60">60 min</option><option value="120">2 hours</option></select>
+  <button type="button" id="ptOn">Start BabyWare mode</button><button type="button" class="danger" id="ptOff">Exit BabyWare mode (reboot)</button></div>
+ <label>TCP port<input name="passthroughPort" type="number" min="1024" max="65535"></label>
+ <label>IP password (BabyWare)<input name="ip150Password" type="password" maxlength="32" autocomplete="new-password"></label>
+ <div class="hint">For BabyWare's <b>IP150 / Static IP</b> connection: the bridge answers like an IP150 module. Use this password as the connection's <i>IP password</i> (factory: <code>paradox</code>). Leave empty to keep it.</div>
+ <div class="hint">Always off after a reboot. One client at a time; an idle session closes after 10 minutes (BabyWare can reconnect).<br>
+  <b>BabyWare IP connection (easiest):</b> connection type <i>IP150 / Static IP</i>, this bridge's IP address, port above, the IP password below - no extra software.<br>
+  <b>Or serial:</b> install a virtual COM port tool - e.g. <i>HW VSP3</i> (HW group) or <i>com0com + hub4com</i>. Create a port (e.g. COM10)
+  that connects to this bridge's IP and the port above; choose <b>RFC 2217</b> (also called "Telnet COM port control") if offered, otherwise raw TCP.
+  In BabyWare create the connection as <b>Serial / USB direct, COM10, 9600 baud</b>, with the panel's PC password [911] / installer code as usual. Full steps: <a href="/manual#babyware" target="_blank">manual</a>.</div>
 </fieldset>
 <fieldset data-tab="system"><legend>Time</legend>
  <label>NTP server<input name="ntpServer" maxlength="64" required></label>
@@ -328,6 +361,8 @@ async function load(){
  ipCur=c.current;document.getElementById('ipNow').textContent=c.current.connected?('Now: '+c.current.ip+' / '+c.current.subnet+', gateway '+c.current.gateway+', DNS '+c.current.dns1):'';
  document.getElementById('staticBox').hidden=!c.staticIp;
  f.displayEnabled.checked=c.displayEnabled;pinCfg=c.pins;
+ f.passthroughPort.value=c.passthroughPort;
+ f.ip150Password.placeholder=c.ip150PasswordSet?'•••••• (unchanged)':'';
  f.integration.value=c.integration;integrationBoxes();loadHomekit();
  f.mqttHost.value=c.mqttHost;f.mqttPort.value=c.mqttPort;f.mqttUser.value=c.mqttUser;
  f.mqttBase.value=c.mqttBase;f.haDiscovery.checked=c.haDiscovery;f.haPrefix.value=c.haPrefix;f.mqttAllowControl.checked=c.mqttAllowControl;f.mqttRetainZones.checked=c.mqttRetainZones;f.mqttRetainPanel.checked=c.mqttRetainPanel;f.otaNetwork.checked=c.otaNetwork;
@@ -359,7 +394,7 @@ async function loadHomekit(){
   if(!h.enabled)return;
   document.getElementById('hkCode').textContent=h.code||'-';
   document.getElementById('hkQr').src='/api/homekit/qr.svg?'+Date.now();
-  const rows=[['Name','Paradox Alarm'],['Address',h.host+' : '+h.port],['Accessories',h.accessories+' (areas + zones)'],['Paired controllers',String(h.controllers)],['Setup payload',h.setupUri]];
+  const rows=[['Name','Paradox Alarm'],['Address',h.host+' : '+h.port],['Accessories',h.accessories+' (areas, zones, AC power, panel battery)'],['Paired controllers',String(h.controllers)],['Setup payload',h.setupUri]];
   document.getElementById('hkInfo').replaceChildren(...rows.flatMap(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.className='hint';dt.textContent=k;dd.style.margin='0';dd.textContent=v;return[dt,dd]}));
  }catch(e){document.getElementById('hkStatus').textContent='Status: unknown'}
 }
@@ -382,6 +417,33 @@ document.getElementById('hkNewCode').onclick=async()=>{
 document.getElementById('hkUnpair').onclick=async()=>{
  if(!confirm('Remove all HomeKit pairings? The bridge disappears from the Home app until it is added again.'))return;
  const j=await api('/api/homekit/unpair',new URLSearchParams());show(j.message,!j.ok);loadHomekit()};
+async function loadPt(){
+ try{const s=await (await fetch('/api/status')).json(),p=s.passthrough||{};const el=document.getElementById('ptStatus');
+  el.textContent=!p.enabled?'Off - normal operation':p.connected?('BabyWare connected from '+p.client+' ('+(p.protocol==='IP150'?'IP150 - '+p.ip150State:(p.rfc2217?'RFC 2217, ':'raw TCP, ')+p.baud+' baud')+') - '+p.bytesToPanel+' bytes to / '+p.bytesFromPanel+' from the panel')
+   :('BabyWare mode - waiting for BabyWare on port '+p.port+'; reboots in '+Math.ceil(p.secondsLeft/60)+' min if it doesn\'t connect');
+  el.style.color=p.connected?'var(--info)':'';
+  const dg=document.getElementById('ptDiag');dg.hidden=!(p.firstToPanel||p.firstFromPanel);
+  dg.textContent='First bytes BabyWare \u2192 panel: '+(p.firstToPanel||'-')+'\nFirst bytes panel \u2192 BabyWare: '+(p.firstFromPanel||'(none - the panel did not answer)');
+ }catch(e){}
+}
+document.getElementById('ptOn').onclick=async()=>{if(!confirm('Start BabyWare mode? Everything except this web page stops (panel connection, MQTT / Home Assistant, HomeKit, Homey updates) until the bridge reboots.'))return;const j=await api('/api/passthrough/enable',new URLSearchParams({minutes:document.getElementById('ptMinutes').value}));show(j.message,!j.ok);loadPt()};
+document.getElementById('ptOff').onclick=async()=>{if(!confirm('Exit BabyWare mode? The bridge reboots (a running BabyWare session is disconnected).'))return;const j=await api('/api/passthrough/disable',new URLSearchParams());show(j.message,!j.ok);loadPt()};
+loadPt();setInterval(()=>{if(!document.getElementById('ptBox').hidden)loadPt()},3000);
+document.getElementById('haScan').onclick=async e=>{
+ const box=document.getElementById('haOld'),txt=document.getElementById('haOldText'),ul=document.getElementById('haOldList'),del=document.getElementById('haClean');
+ e.target.disabled=true;e.target.textContent='Searching (3 s)…';box.hidden=false;txt.textContent='';ul.replaceChildren();del.hidden=true;
+ try{const j=await (await fetch('/api/mqtt/ha-scan')).json();
+  if(!j.ok){txt.textContent=j.message;}
+  else if(!j.items.length){txt.textContent='No old Paradox entries found - only this bridge\'s own device is on the broker.';}
+  else{txt.textContent=j.items.length+' old Paradox entr'+(j.items.length===1?'y':'ies')+' found (not this bridge). Deleting removes them from Home Assistant:';
+   ul.replaceChildren(...j.items.map(i=>{const li=document.createElement('li');li.textContent=(i.name||'(no name)')+'  -  '+i.topic;return li}));
+   del.hidden=false;del.textContent='Delete these '+j.items.length+' old entries';}
+ }catch(x){txt.textContent='Search failed';}
+ e.target.disabled=false;e.target.textContent='Find old Home Assistant devices'};
+document.getElementById('haClean').onclick=async()=>{
+ if(!confirm('Delete the listed old entries from Home Assistant? This bridge\'s own device stays. If the old system is still running it will add them back.'))return;
+ const j=await api('/api/mqtt/ha-cleanup',new URLSearchParams());show(j.message,!j.ok);
+ document.getElementById('haClean').hidden=true;document.getElementById('haOldText').textContent=j.message;document.getElementById('haOldList').replaceChildren()};
 document.getElementById('haPub').onclick=async()=>{
  try{const r=await fetch('/api/mqtt/republish',{method:'POST'});const j=await r.json();show(j.message,!j.ok)}catch(e){show('Request failed',true)}};
 fetch('/api/status').then(r=>r.json()).then(s=>{document.getElementById('pwDefault').hidden=!s.defaultPassword}).catch(()=>{});

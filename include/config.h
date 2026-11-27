@@ -74,6 +74,10 @@
 #define MQTT_HA_DISCOVERY   1           // publish Home Assistant MQTT discovery configs
 #define MQTT_HA_PREFIX      "homeassistant"
 
+// ---- BabyWare serial pass-through (switched on for a time window on Settings -> Panel) ----
+#define PASSTHROUGH_PORT    10000
+#define IP150_PASSWORD      "paradox"   // IP password BabyWare uses for its IP150 connection
+
 // ---- Apple HomeKit (built in, HomeSpan) - only one of MQTT / HomeKit can be on ----
 #define HOMEKIT_ENABLED     0
 
@@ -86,7 +90,9 @@
 // 1 = TTGO T-Display (screen + buttons). 0 = any other ESP32 board: the screen
 // is never initialised and its pins are left alone. Also changeable on the
 // Settings page.
+#ifndef DISPLAY_ENABLED   // the esp32-generic build sets it to 0 (platformio.ini)
 #define DISPLAY_ENABLED   1
+#endif
 
 // T-Display buttons (only used when the display is enabled)
 #define BUTTON_PAGE       35   // next display page

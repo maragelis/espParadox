@@ -139,6 +139,8 @@ Alarm* and type the code. You get:
   Triggered = alarm.
 - one **Contact** or **Motion** sensor per enabled zone (type from Settings → Zones), with
   Tampered and Low battery.
+- **AC power** and **Panel battery** contact sensors: closed = OK, open = trouble (the battery
+  sensor also sets Low battery). The area alarms show **Fault** while either has a trouble.
 
 The accessory list is built at boot, so after changing zones, reboot the bridge.
 Switching away from HomeKit deletes everything HomeSpan stored on the bridge (pairings, keys,

@@ -23,6 +23,7 @@ bool backlight = true;
 uint32_t lastDraw = 0;
 uint32_t holdUntil = 0;
 bool active = false;  // display enabled in settings and initialised
+bool frozen = false;  // BabyWare mode: static notice only
 
 struct Button {
   explicit Button(uint8_t p) : pin(p) {}
@@ -261,6 +262,18 @@ void displayProgress(const char* title, int pct) {
   holdUntil = millis() + 5000;
 }
 
+void displayFreeze(const char* line1, const char* line2) {
+  if (!active) return;
+  frozen = true;
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+  tft.drawString(line1, W / 2, H / 2 - 16, 4);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawString(line2, W / 2, H / 2 + 20, 2);
+  tft.setTextDatum(TL_DATUM);
+}
+
 void displayLoop(const paradox::Panel& panel) {
   if (!active) return;
   if (btnPage.pressed()) {
@@ -271,6 +284,7 @@ void displayLoop(const paradox::Panel& panel) {
     backlight = !backlight;
     digitalWrite(TFT_BL, backlight ? TFT_BACKLIGHT_ON : !TFT_BACKLIGHT_ON);
   }
+  if (frozen) return;  // BabyWare mode notice stays
   if ((int32_t)(millis() - holdUntil) < 0) return;
   if (!haveSprite || millis() - lastDraw < kRefreshMs) return;
   lastDraw = millis();

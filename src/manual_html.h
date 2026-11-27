@@ -46,6 +46,7 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertic
 <li><a href="#zones">Zones</a></li>
 <li><a href="#smarthome">Smart home: MQTT or HomeKit</a></li>
 <li><a href="#homey">Homey app</a></li>
+<li><a href="#babyware">BabyWare through the bridge</a></li>
 <li><a href="#updates">Firmware updates and backups</a></li>
 <li><a href="#recovery">Forgot the password / can't reach the bridge</a></li>
 <li><a href="#trouble">Troubleshooting</a></li>
@@ -153,7 +154,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <h3>MQTT (Home Assistant, Homebridge, Homey MQTT)</h3>
 <ul>
 <li>Enter the broker address, port, login and base topic (default <code>paradox</code>).</li>
-<li><b>Home Assistant discovery</b> creates a "Paradox alarm" device automatically: alarm panel per area, sensor per zone, panel connection, troubles, AC power, battery. <i>Publish Home Assistant discovery now</i> re-sends it.</li>
+<li><b>Home Assistant discovery</b> creates a "Paradox alarm" device automatically: alarm panel per area, sensor per zone, panel connection, troubles, AC power, battery. <i>Publish Home Assistant discovery now</i> re-sends it. <i>Find old Home Assistant devices</i> lists Paradox entries left by an earlier integration or a previous bridge board and can delete them (this bridge's own device stays).</li>
 <li>Main topics: <code>paradox/area/1/state</code>, commands to <code>paradox/area/1/set</code> (<code>full</code>, <code>stay</code>, <code>sleep</code>, <code>disarm</code>), <code>paradox/zone/N/open</code>, <code>paradox/event</code>, <code>paradox/panel/ac_power</code>, <code>paradox/panel/battery_low</code>.</li>
 <li><b>Retain</b> options keep the last zone / panel state on the broker for clients that connect later.</li>
 </ul>
@@ -161,6 +162,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <ul>
 <li>After choosing HomeKit and Save, the tab shows a <b>QR code</b> and <b>setup code</b>. iPhone: Home app &rarr; <b>+</b> &rarr; Add Accessory &rarr; scan. Confirm "Uncertified Accessory" with <i>Add Anyway</i>.</li>
 <li>Each area becomes an alarm (Home = Stay, Away = Full, Night = Sleep), each zone a door or motion sensor.</li>
+<li><b>AC power</b> and <b>Panel battery</b> appear as contact sensors: <i>closed</i> = OK, <i>open</i> = trouble (mains lost / battery low or missing). Turn on their notifications in the Home app. While either has a trouble, the area alarms show <i>Fault</i>.</li>
 <li><b>After changing zones, reboot the bridge</b> - the HomeKit accessory list is built at start.</li>
 <li><b>Leaving HomeKit</b> deletes the pairing data on the bridge. Remove "Paradox Alarm" from the Home app too.</li>
 </ul></section>
@@ -172,6 +174,24 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <li>Timeline entries say who armed / disarmed. Homey doesn't tell apps which Homey user tapped a button - use the flow card <i>Set alarm mode &hellip; as [who]</i> (e.g. with the Name tag of a presence trigger) to record a person.</li>
 <li><b>Changed the bridge password?</b> Update it in the app settings too, or the devices become unavailable.</li>
 </ul></section>
+
+<section id="babyware"><h2>BabyWare through the bridge</h2>
+<p>BabyWare can reach the panel through the bridge in two ways. <b>Easiest: the IP connection</b> - the bridge answers like an IP150 module:</p>
+<ol>
+<li><b>Bridge:</b> <i>Settings &rarr; Panel &rarr; BabyWare pass-through</i>: set the <b>IP password (BabyWare)</b> (factory <code>paradox</code>), Save. Then choose how long to wait and press <b>Start BabyWare mode</b>.</li>
+<li><b>BabyWare:</b> connection type <b>IP150 / Static IP</b>, IP address = the bridge's address, port <code>10000</code> (the pass-through port), IP password = the one above; panel PC password [911] as usual. Connect.</li>
+</ol>
+<p><b>Or serial</b>, as if a 307USB cable were plugged in:</p>
+<ol>
+<li><b>PC:</b> install a virtual COM port tool, e.g. <b>HW VSP3</b> (HW group, free) or <b>com0com + hub4com</b>. Create a virtual port (e.g. <code>COM10</code>) that connects to the bridge's IP address and the pass-through port (default <code>10000</code>). Choose <b>RFC 2217</b> / "Telnet COM port control" if the tool offers it (BabyWare can then set the speed); raw TCP works too.</li>
+<li><b>Bridge:</b> <i>Settings &rarr; Panel &rarr; BabyWare pass-through</i> &rarr; choose how long to wait for BabyWare &rarr; <b>Start BabyWare mode</b>.</li>
+<li><b>BabyWare:</b> connection type <b>Serial / USB direct</b>, port <code>COM10</code>, <b>9600 baud</b>; panel ID and PC password [911] as for a cable connection. Connect.</li>
+<li>When finished, disconnect in BabyWare and press <b>Exit BabyWare mode</b> (or Reboot). Normal operation returns only after that reboot - or automatically when the chosen waiting time passes without BabyWare connected.</li>
+</ol>
+<div class="warn"><b>BabyWare mode stops everything except the web page</b>: the bridge's panel connection, MQTT / Home Assistant (shown unavailable), HomeKit, Homey updates, network firmware upload and the display pages (the display shows <i>BabyWare mode</i>). BabyWare may disconnect and reconnect. <b>Only a reboot restores normal operation.</b></div>
+<div class="danger"><b>BabyWare can change the panel's programming.</b> The bridge forwards whatever BabyWare sends. The pass-through port has no password of its own: it is off by default, always off after a reboot, and the bridge reboots to normal operation when the chosen time passes without BabyWare connected (a running session is never cut; an idle one closes after 10 minutes). BabyWare still needs the panel's PC password / installer credentials.</div>
+<p class="mute">At 9600 baud reading the whole panel takes a few minutes - the same as with a cable.</p>
+</section>
 
 <section id="updates"><h2>12. Firmware updates and backups</h2>
 <ul>
@@ -242,6 +262,7 @@ Your panel keeps protecting the house on its own. Don't rely on Homey, Home Assi
 <tr><td>Access point</td><td><code>ParadoxBridge</code>, <code>http://192.168.4.1</code></td></tr>
 <tr><td>HomeKit</td><td>port 1201</td></tr>
 <tr><td>Network firmware upload (PlatformIO)</td><td>port 3232, password = web password</td></tr>
+<tr><td>BabyWare pass-through</td><td>TCP port 10000 (setting), RFC 2217 or raw, only while switched on</td></tr>
 <tr><td>Discovery (Homey)</td><td>mDNS <code>_paradox._tcp</code></td></tr>
 <tr><td>Panel serial</td><td>9600 baud, 8N1, 5 V TTL</td></tr>
 </table></div>
